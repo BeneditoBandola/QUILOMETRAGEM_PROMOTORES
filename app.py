@@ -340,7 +340,6 @@ caminho_github = f"dados_promotores/S{num_semana}_{nome_prom_limpo}.json"
 
 dados_salvos, sha_arquivo = carregar_dados_github(caminho_github)
 
-# Controle de bloqueio
 esta_finalizado = False
 if dados_salvos and dados_salvos.get("status") == "FINALIZADO":
     esta_finalizado = True
@@ -400,84 +399,83 @@ for i, dia_nome in enumerate(dias_semana):
                 key=f"lei_{dia_nome}"
             )
 
-        # Submenu de Seleção e Edição de Lojas
-        st.markdown("#### 🏬 Lojas Atendidas no Dia")
-        if not esta_finalizado:
-            st.caption("Você pode alterar, adicionar ou remover lojas a qualquer momento:")
-
-        cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
-        
-        # Chave de estado para permitir alteração dinâmica sem travar
-        session_key_lojas = f"lojas_selecionadas_{dia_nome}"
-        if session_key_lojas not in st.session_state:
-            st.session_state[session_key_lojas] = cods_salvos_dia
+        # Condição de liberação de lojas e rota: SOMENTE SE A SITUAÇÃO FOR 'Normal'
+        dia_eh_normal = (sit_sel == "Normal")
 
         clientes_dia_selecionados = []
-
-        if not DF_CLIENTES.empty:
-            for cid_norm in cidades_disponiveis_promotor:
-                df_cidade = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_norm]
-                if df_cidade.empty:
-                    continue
-                
-                nome_cidade_exibicao = df_cidade["CIDADE_RAW"].iloc[0]
-                codigos_da_cidade = df_cidade["CÓDIGO"].tolist()
-                
-                # Resgata o que está atualmente selecionado nesta cidade
-                defaults_cidade = [c for c in st.session_state[session_key_lojas] if c in codigos_da_cidade]
-
-                with st.expander(f"🏙️ {nome_cidade_exibicao} ({len(df_cidade)} lojas)", expanded=bool(defaults_cidade)):
-                    escolhidos_cid = st.multiselect(
-                        f"Lojas em {nome_cidade_exibicao}:",
-                        options=codigos_da_cidade,
-                        default=defaults_cidade,
-                        disabled=esta_finalizado,
-                        format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
-                        key=f"cli_{dia_nome}_{cid_norm}"
-                    )
-                    clientes_dia_selecionados.extend(escolhidos_cid)
-
-            # Opção de cidade fora da rota
-            with st.expander("🌐 Outra Cidade / Fora da Rota Usual", expanded=False):
-                cidades_fora = [c for c in todas_cidades_norm if c not in cidades_disponiveis_promotor]
-                cid_extra = st.selectbox(
-                    f"Escolha a cidade fora da rota ({dia_nome}):", 
-                    ["-- Selecione --"] + cidades_fora, 
-                    disabled=esta_finalizado,
-                    key=f"extra_cid_{dia_nome}"
-                )
-                if cid_extra != "-- Selecione --":
-                    df_extra = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_extra]
-                    cods_extra = df_extra["CÓDIGO"].tolist()
-                    defaults_extra = [c for c in st.session_state[session_key_lojas] if c in cods_extra]
-                    escolhidos_extra = st.multiselect(
-                        f"Lojas em {cid_extra}:",
-                        options=cods_extra,
-                        default=defaults_extra,
-                        disabled=esta_finalizado,
-                        format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
-                        key=f"cli_extra_{dia_nome}"
-                    )
-                    clientes_dia_selecionados.extend(escolhidos_extra)
-
-        # Atualiza estado das lojas selecionadas no dia
-        clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
-        st.session_state[session_key_lojas] = clientes_dia_selecionados
-
-        # Cálculo da Sugestão de KM do circuito (Casa -> Lojas -> Casa)
-        km_sugerido_circuito = 0.0
         df_atendidos = pd.DataFrame()
+        km_sugerido_circuito = 0.0
 
-        if clientes_dia_selecionados and not DF_CLIENTES.empty and "lat" in dados_promotor_atual:
-            df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
-            df_com_coord = df_atendidos.dropna(subset=["lat", "lon"])
-            
-            if not df_com_coord.empty:
-                pontos_visitas = list(zip(df_com_coord["lat"], df_com_coord["lon"]))
-                km_sugerido_circuito = round(
-                    estimar_km_circuito_completo(dados_promotor_atual["lat"], dados_promotor_atual["lon"], pontos_visitas),
-                    1
-                )
+        if dia_eh_normal:
+            st.markdown("#### 🏬 Lojas Atendidas no Dia")
+            if not esta_finalizado:
+                st.caption("Abra as cidades para selecionar ou ajustar as lojas:")
+
+            cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
+            session_key_lojas = f"lojas_selecionadas_{dia_nome}"
+            if session_key_lojas not in st.session_state:
+                st.session_state[session_key_lojas] = cods_salvos_dia
+
+            if not DF_CLIENTES.empty:
+                for cid_norm in cidades_disponiveis_promotor:
+                    df_cidade = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_norm]
+                    if df_cidade.empty:
+                        continue
+                    
+                    nome_cidade_exibicao = df_cidade["CIDADE_RAW"].iloc[0]
+                    codigos_da_cidade = df_cidade["CÓDIGO"].tolist()
+                    defaults_cidade = [c for c in st.session_state[session_key_lojas] if c in codigos_da_cidade]
+
+                    with st.expander(f"🏙️ {nome_cidade_exibicao} ({len(df_cidade)} lojas)", expanded=bool(defaults_cidade)):
+                        escolhidos_cid = st.multiselect(
+                            f"Lojas em {nome_cidade_exibicao}:",
+                            options=codigos_da_cidade,
+                            default=defaults_cidade,
+                            disabled=esta_finalizado,
+                            format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
+                            key=f"cli_{dia_nome}_{cid_norm}"
+                        )
+                        clientes_dia_selecionados.extend(escolhidos_cid)
+
+                with st.expander("🌐 Outra Cidade / Fora da Rota Usual", expanded=False):
+                    cidades_fora = [c for c in todas_cidades_norm if c not in cidades_disponiveis_promotor]
+                    cid_extra = st.selectbox(
+                        f"Escolha a cidade fora da rota ({dia_nome}):", 
+                        ["-- Selecione --"] + cidades_fora, 
+                        disabled=esta_finalizado,
+                        key=f"extra_cid_{dia_nome}"
+                    )
+                    if cid_extra != "-- Selecione --":
+                        df_extra = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_extra]
+                        cods_extra = df_extra["CÓDIGO"].tolist()
+                        defaults_extra = [c for c in st.session_state[session_key_lojas] if c in cods_extra]
+                        escolhidos_extra = st.multiselect(
+                            f"Lojas em {cid_extra}:",
+                            options=cods_extra,
+                            default=defaults_extra,
+                            disabled=esta_finalizado,
+                            format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
+                            key=f"cli_extra_{dia_nome}"
+                        )
+                        clientes_dia_selecionados.extend(escolhidos_extra)
+
+            clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
+            st.session_state[session_key_lojas] = clientes_dia_selecionados
+
+            # Cálculo de sugestão de circuito
+            if clientes_dia_selecionados and not DF_CLIENTES.empty and "lat" in dados_promotor_atual:
+                df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
+                df_com_coord = df_atendidos.dropna(subset=["lat", "lon"])
+                if not df_com_coord.empty:
+                    pontos_visitas = list(zip(df_com_coord["lat"], df_com_coord["lon"]))
+                    km_sugerido_circuito = round(
+                        estimar_km_circuito_completo(dados_promotor_atual["lat"], dados_promotor_atual["lon"], pontos_visitas),
+                        1
+                    )
+        else:
+            # Se for Férias, Carro Quebrado, Folga, Falta, etc., trava e não pede lojas
+            st.warning(f"⚠️ Dia registrado como **{sit_sel}**. Lançamento de lojas e roteirização desativados.")
+            clientes_dia_selecionados = []
 
         # Inputs de KM
         col_kmi, col_kmf = st.columns(2)
@@ -486,44 +484,49 @@ for i, dia_nome in enumerate(dias_semana):
             km_ini_str = st.text_input(
                 f"KM Inicial ({dia_nome})", 
                 value=float_para_str_br(def_kmi).replace(",00", ""), 
-                disabled=esta_finalizado,
+                disabled=esta_finalizado or (not dia_eh_normal),
                 key=f"kmi_{dia_nome}"
             )
             km_ini = str_br_para_float(km_ini_str)
 
         with col_kmf:
-            val_salvo_kmf = dados_dia_salvo.get("km_fim", None)
-            if val_salvo_kmf is not None and str(val_salvo_kmf) not in ["0", "0.0", ""]:
-                def_kmf = str_br_para_float(val_salvo_kmf)
-            elif km_sugerido_circuito > 0.0 and km_ini > 0.0:
-                def_kmf = km_ini + km_sugerido_circuito
+            if dia_eh_normal:
+                val_salvo_kmf = dados_dia_salvo.get("km_fim", None)
+                if val_salvo_kmf is not None and str(val_salvo_kmf) not in ["0", "0.0", ""]:
+                    def_kmf = str_br_para_float(val_salvo_kmf)
+                elif km_sugerido_circuito > 0.0 and km_ini > 0.0:
+                    def_kmf = km_ini + km_sugerido_circuito
+                else:
+                    def_kmf = def_kmi
             else:
-                def_kmf = def_kmi
+                def_kmf = km_ini  # Se não for dia normal, KM final é igual ao inicial (0 rodados)
 
             km_fim_str = st.text_input(
                 f"KM Final ({dia_nome})", 
                 value=float_para_str_br(def_kmf).replace(",00", ""), 
-                disabled=esta_finalizado,
+                disabled=esta_finalizado or (not dia_eh_normal),
                 key=f"kmf_{dia_nome}"
             )
             km_fim = str_br_para_float(km_fim_str)
 
-        if km_sugerido_circuito > 0.0 and not esta_finalizado:
+        if dia_eh_normal and km_sugerido_circuito > 0.0 and not esta_finalizado:
             st.info(f"💡 **Sugestão de trajeto:** ~{float_para_str_br(km_sugerido_circuito)} km (Circuito ida e volta). O valor é totalmente editável!")
 
         km_dia = 0.0
-        if km_fim > 0.0:
+        if dia_eh_normal and km_fim > 0.0:
             if km_fim < km_ini:
                 st.error("⚠️ KM Final não pode ser menor que o KM Inicial!")
             else:
                 km_dia = km_fim - km_ini
                 km_fim_anterior = km_fim
                 st.caption(f"🚘 KM Rodado no dia: **{float_para_str_br(km_dia)} km**")
+        elif not dia_eh_normal:
+            km_fim_anterior = km_ini
 
         km_total_calculado += km_dia
 
-        # Resumo visual das lojas e mapa com rotas
-        if clientes_dia_selecionados and not df_atendidos.empty:
+        # Mapa e endereços (somente se houver atendimento e dia for Normal)
+        if dia_eh_normal and clientes_dia_selecionados and not df_atendidos.empty:
             with st.expander(f"📍 Lojas Atendidas no Dia ({len(clientes_dia_selecionados)})", expanded=True):
                 for _, row in df_atendidos.iterrows():
                     st.markdown(f"• **{row['NOME']}**  \n  🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
