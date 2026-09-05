@@ -84,10 +84,12 @@ DADOS_PROMOTORES = {
 
 PROMOTORES = list(DADOS_PROMOTORES.keys())
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
-NOME_ARQUIVO_PLANILHA = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
+
+NOME_PLANILHA_CLIENTES = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
+NOME_PLANILHA_VENDAS = "cubo_de_vendas_05_09_2026_13_31_05.xlsx"
 
 # ==============================================================================
-# AUXILIARES DE FORMATAÇÃO E PADRÃO MONETÁRIO BRASILEIRO (VÍRGULA)
+# AUXILIARES DE FORMATAÇÃO
 # ==============================================================================
 def normalizar_texto(txt):
     if not txt:
@@ -95,13 +97,11 @@ def normalizar_texto(txt):
     return unicodedata.normalize('NFKD', str(txt)).encode('ASCII', 'ignore').decode('utf-8').strip().upper()
 
 def str_br_para_float(val):
-    """Converte texto em formato brasileiro (ex: '25,50' ou '1.250,50') para float."""
     if not val:
         return 0.0
     s = str(val).strip().replace("R$", "").strip()
     if not s:
         return 0.0
-    # Se contiver vírgula, remove ponto de milhar e troca vírgula por ponto decimal
     if "," in s:
         s = s.replace(".", "").replace(",", ".")
     try:
@@ -110,7 +110,6 @@ def str_br_para_float(val):
         return 0.0
 
 def float_para_str_br(val):
-    """Converte float para formato monetário brasileiro com vírgula (ex: 25.5 -> '25,50')."""
     try:
         return f"{float(val):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     except (ValueError, TypeError):
@@ -149,32 +148,30 @@ if not st.session_state.usuario_ativo:
     st.stop()
 
 # ==============================================================================
-# CARREGAMENTO DA BASE DE CLIENTES
+# CARREGAMENTO DA BASE CRUZADA (FILTRADA E ORDENADA POR COMPRAS, SEM VALOR NA TELA)
 # ==============================================================================
 @st.cache_data(ttl=3600)
-def carregar_base_clientes():
-    caminho = NOME_ARQUIVO_PLANILHA
-    arquivos_excel = glob.glob("*.xlsx")
-    
-    if caminho not in arquivos_excel and arquivos_excel:
-        for arq in arquivos_excel:
-            if "clientes" in arq.lower():
-                caminho = arq
+def carregar_base_cruzada():
+    caminho_cli = NOME_PLANILHA_CLIENTES
+    arqs = glob.glob("*.xlsx")
+    if caminho_cli not in arqs and arqs:
+        for a in arqs:
+            if "clientes" in a.lower():
+                caminho_cli = a
                 break
         else:
-            caminho = arquivos_excel[0]
+            caminho_cli = arqs[0]
 
     try:
-        df = pd.read_excel(caminho, sheet_name=0)
-        df = df.dropna(subset=["CÓDIGO", "NOME"]).copy()
-        
-        df["CÓDIGO"] = df["CÓDIGO"].astype(int).astype(str).str.strip()
-        df["NOME"] = df["NOME"].astype(str).str.strip()
-        df["CIDADE_RAW"] = df["CIDADE"].fillna("NÃO INFORMADA").astype(str).str.strip().str.upper()
-        df["CIDADE_NORM"] = df["CIDADE_RAW"].apply(normalizar_texto)
-        df["BAIRRO"] = df["BAIRRO"].fillna("").astype(str).str.strip()
-        df["ENDEREÇO"] = df["ENDEREÇO"].fillna("").astype(str).str.strip()
-        df["UF"] = df["UF"].fillna("").astype(str).str.strip()
+        df_cli = pd.read_excel(caminho_cli, sheet_name=0)
+        df_cli = df_cli.dropna(subset=["CÓDIGO", "NOME"]).copy()
+        df_cli["CÓDIGO"] = df_cli["CÓDIGO"].astype(int).astype(str).str.strip()
+        df_cli["NOME"] = df_cli["NOME"].astype(str).str.strip()
+        df_cli["CIDADE_RAW"] = df_cli["CIDADE"].fillna("NÃO INFORMADA").astype(str).str.strip().str.upper()
+        df_cli["CIDADE_NORM"] = df_cli["CIDADE_RAW"].apply(normalizar_texto)
+        df_cli["BAIRRO"] = df_cli["BAIRRO"].fillna("").astype(str).str.strip()
+        df_cli["ENDEREÇO"] = df_cli["ENDEREÇO"].fillna("").astype(str).str.strip()
+        df_cli["UF"] = df_cli["UF"].fillna("").astype(str).str.strip()
 
         def sanitizar_coord(val):
             try:
@@ -184,15 +181,39 @@ def carregar_base_clientes():
             except ValueError:
                 return None
 
-        df["lat"] = df["LATITUDE"].apply(sanitizar_coord)
-        df["lon"] = df["LONGITUDE"].apply(sanitizar_coord)
-        return df
+        df_cli["lat"] = df_cli["LATITUDE"].apply(sanitizar_coord)
+        df_cli["lon"] = df_cli["LONGITUDE"].apply(sanitizar_coord)
     except Exception as e:
-        st.error(f"Erro ao carregar a base de clientes: {e}")
+        st.error(f"Erro ao carregar cadastro de clientes: {e}")
         return pd.DataFrame()
 
-DF_CLIENTES = carregar_base_clientes()
+    # Leitura do Cubo de Vendas para filtrar quem comprou e ordenar
+    caminho_vendas = NOME_PLANILHA_VENDAS
+    if caminho_vendas not in arqs and arqs:
+        for a in arqs:
+            if "cubo" in a.lower() or "vendas" in a.lower():
+                caminho_vendas = a
+                break
 
+    try:
+        df_vendas = pd.read_excel(caminho_vendas, sheet_name=0)
+        df_vendas = df_vendas.dropna(subset=["CLIENTE CODIGO", "TOTAL VALOR"]).copy()
+        df_vendas["CLIENTE CODIGO"] = df_vendas["CLIENTE CODIGO"].astype(int).astype(str).str.strip()
+        
+        # Filtra apenas clientes com valor positivo no ano
+        df_vendas = df_vendas[df_vendas["TOTAL VALOR"] > 0]
+        vendas_resumo = df_vendas.groupby("CLIENTE CODIGO")["TOTAL VALOR"].sum().reset_index()
+    except Exception:
+        return df_cli
+
+    # Junta e ordena por maior valor de compras sem exibir o valor ao usuário
+    df_merged = pd.merge(df_cli, vendas_resumo, left_on="CÓDIGO", right_on="CLIENTE CODIGO", how="inner")
+    df_merged = df_merged.sort_values(by="TOTAL VALOR", ascending=False)
+    return df_merged
+
+DF_CLIENTES = carregar_base_cruzada()
+
+# Rótulo limpo: Apenas Nome, Bairro e Cidade (sem valores de compra)
 MAPA_GERAL_NOMES = {}
 if not DF_CLIENTES.empty:
     for _, r in DF_CLIENTES.iterrows():
@@ -362,7 +383,7 @@ for i, dia_nome in enumerate(dias_semana):
 
         km_total_calculado += km_dia
 
-        # Submenu por Cidade
+        # Submenu por Cidade (Lojas compradoras ordenadas internamente por volume)
         st.markdown("#### 🏬 Selecionar Lojas por Cidade")
         cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
         clientes_dia_selecionados = []
@@ -374,6 +395,7 @@ for i, dia_nome in enumerate(dias_semana):
                     continue
                 
                 nome_cidade_exibicao = df_cidade["CIDADE_RAW"].iloc[0]
+                # A lista de códigos já está ordenada pelo volume de compras
                 codigos_da_cidade = df_cidade["CÓDIGO"].tolist()
                 defaults_cidade = [c for c in cods_salvos_dia if c in codigos_da_cidade]
 
@@ -406,7 +428,7 @@ for i, dia_nome in enumerate(dias_semana):
 
         clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
 
-        # Mapa com linha ligando casa às lojas
+        # Mapa: Linha ligando a residência às lojas atendidas
         if clientes_dia_selecionados and not DF_CLIENTES.empty:
             df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
 
@@ -468,7 +490,7 @@ for i, dia_nome in enumerate(dias_semana):
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 Gastos Extras da Semana")
-st.caption("Digite o valor utilizando **vírgula** (Exemplo: `25,50` ou `150,00`).")
+st.caption("Digite o valor com **vírgula** (Exemplo: `25,50` ou `150,00`).")
 
 gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
 qtd_gastos = max(1, len(gastos_salvos_default))
@@ -486,7 +508,6 @@ for idx in range(qtd_gastos):
             key=f"gdesc_{idx}"
         )
     with col_val:
-        # Preenche com valor salvo formatado com vírgula
         v_salvo_num = g_item.get("valor", 0.0)
         v_salvo_txt = float_para_str_br(v_salvo_num) if v_salvo_num > 0 else ""
         
@@ -502,7 +523,7 @@ for idx in range(qtd_gastos):
         gastos_extras.append({"desc": g_desc.strip(), "valor": v_float})
 
 # ==============================================================================
-# RESUMO FINANCEIRO (FORMATADO NO PADRÃO R$ COM VÍRGULA)
+# RESUMO FINANCEIRO (COM VÍRGULA)
 # ==============================================================================
 st.divider()
 st.markdown("### 📊 Fechamento da Semana")
