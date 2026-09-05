@@ -23,7 +23,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# CONFIGURAÇÕES E CARREGAMENTO DE CLIENTES
+# CONFIGURAÇÕES E CARREGAMENTO DA PLANILHA EXATA
 # ==============================================================================
 PROMOTORES = [
     "Fernanda Dias Ferreira",
@@ -33,7 +33,9 @@ PROMOTORES = [
 ]
 
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
-NOME_ARQUIVO_PLANILHA = "clientes.xlsx"
+
+# Nome exato da planilha que está no GitHub
+NOME_ARQUIVO_PLANILHA = "Cópia de clientes com cnpj corretinho novinho (1)_2.xlsx"
 
 @st.cache_data(ttl=3600)
 def carregar_base_clientes():
@@ -41,7 +43,7 @@ def carregar_base_clientes():
         df = pd.read_excel(NOME_ARQUIVO_PLANILHA, sheet_name="Book1")
         df = df.dropna(subset=["CÓDIGO", "NOME"]).copy()
         
-        # Limpeza e padronização de campos
+        # Limpeza e padronização dos campos
         df["CÓDIGO"] = df["CÓDIGO"].astype(int).astype(str).str.strip()
         df["NOME"] = df["NOME"].astype(str).str.strip()
         df["CIDADE"] = df["CIDADE"].fillna("NÃO INFORMADA").astype(str).str.strip().str.upper()
@@ -49,7 +51,7 @@ def carregar_base_clientes():
         df["ENDEREÇO"] = df["ENDEREÇO"].fillna("").astype(str).str.strip()
         df["UF"] = df["UF"].fillna("").astype(str).str.strip()
 
-        # Tratamento de coordenadas (vírgula para ponto)
+        # Conversão das coordenadas geográficas (vírgula para ponto)
         def sanitizar_coord(val):
             try:
                 if pd.isna(val):
@@ -62,17 +64,18 @@ def carregar_base_clientes():
         df["lon"] = df["LONGITUDE"].apply(sanitizar_coord)
         return df
     except Exception as e:
-        st.error(f"Erro ao ler a planilha {NOME_ARQUIVO_PLANILHA}: {e}")
+        st.error(f"Erro ao carregar '{NOME_ARQUIVO_PLANILHA}': {e}")
         return pd.DataFrame()
 
 DF_CLIENTES = carregar_base_clientes()
 LISTA_CIDADES = sorted([c for c in DF_CLIENTES["CIDADE"].unique() if c]) if not DF_CLIENTES.empty else []
 
-# Dicionário geral para busca rápida de nomes
 MAPA_GERAL_NOMES = {}
 if not DF_CLIENTES.empty:
     for _, r in DF_CLIENTES.iterrows():
-        MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']} - {r['BAIRRO']} ({r['CIDADE']}/{r['UF']})"
+        bairro_str = f" - {r['BAIRRO']}" if r['BAIRRO'] else ""
+        cidade_str = f" ({r['CIDADE']}/{r['UF']})" if r['CIDADE'] else ""
+        MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']}{bairro_str}{cidade_str}"
 
 # ==============================================================================
 # INTEGRAÇÃO COM A API DO GITHUB
@@ -131,11 +134,11 @@ def salvar_dados_github(caminho_arquivo, dados_dict, sha_existente=None, mensage
         response = requests.put(url, headers=headers, json=payload, timeout=10)
         return response.status_code in [200, 201]
     except requests.RequestException as e:
-        st.error(f"Erro ao salvar dados no GitHub: {e}")
+        st.error(f"Erro de conexão com o GitHub: {e}")
         return False
 
 # ==============================================================================
-# AUXILIARES
+# FUNÇÕES AUXILIARES
 # ==============================================================================
 def calcular_intervalo_semana(num_semana, ano=None):
     if ano is None:
@@ -229,7 +232,7 @@ for i, dia_nome in enumerate(dias_semana):
 
         km_total_calculado += km_dia
 
-        # --- SELEÇÃO DE CLIENTES (CIDADE + LOJA) ---
+        # --- SELEÇÃO DE CLIENTES FILTRADA POR CIDADE ---
         cidade_sel = st.selectbox(
             f"Filtrar por Cidade ({dia_nome}):",
             options=["TODAS"] + LISTA_CIDADES,
@@ -243,8 +246,6 @@ for i, dia_nome in enumerate(dias_semana):
 
         opcoes_cods = df_opcoes["CÓDIGO"].tolist() if not df_opcoes.empty else []
         cods_salvos = [str(c) for c in dados_dia_salvo.get("clientes", [])]
-        
-        # Garante que lojas previamente salvas continuem na lista mesmo que o filtro mude
         opcoes_finais = list(dict.fromkeys(cods_salvos + opcoes_cods))
 
         clientes_sel = st.multiselect(
@@ -255,7 +256,7 @@ for i, dia_nome in enumerate(dias_semana):
             key=f"cli_{dia_nome}"
         )
 
-        # --- EXIBIÇÃO DE ENDEREÇO E MAPA DO DIA ---
+        # --- ENDEREÇOS E MAPA DO DIA ---
         if clientes_sel and not DF_CLIENTES.empty:
             df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_sel)]
 
