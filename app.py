@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import requests
 import json
 import base64
@@ -14,16 +15,16 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Estilo visual limpo para dispositivos móveis
 st.markdown("""
     <style>
     .main { padding: 10px; }
     .stButton>button { width: 100%; border-radius: 8px; font-weight: bold; }
-    .stTextInput input { text-align: center; }
     </style>
 """, unsafe_allow_html=True)
 
-# Lista de Promotores
+# ==============================================================================
+# CONFIGURAÇÕES E CARREGAMENTO DE CLIENTES
+# ==============================================================================
 PROMOTORES = [
     "Fernanda Dias Ferreira",
     "João Silva",
@@ -32,6 +33,46 @@ PROMOTORES = [
 ]
 
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
+NOME_ARQUIVO_PLANILHA = "clientes.xlsx"
+
+@st.cache_data(ttl=3600)
+def carregar_base_clientes():
+    try:
+        df = pd.read_excel(NOME_ARQUIVO_PLANILHA, sheet_name="Book1")
+        df = df.dropna(subset=["CÓDIGO", "NOME"]).copy()
+        
+        # Limpeza e padronização de campos
+        df["CÓDIGO"] = df["CÓDIGO"].astype(int).astype(str).str.strip()
+        df["NOME"] = df["NOME"].astype(str).str.strip()
+        df["CIDADE"] = df["CIDADE"].fillna("NÃO INFORMADA").astype(str).str.strip().str.upper()
+        df["BAIRRO"] = df["BAIRRO"].fillna("").astype(str).str.strip()
+        df["ENDEREÇO"] = df["ENDEREÇO"].fillna("").astype(str).str.strip()
+        df["UF"] = df["UF"].fillna("").astype(str).str.strip()
+
+        # Tratamento de coordenadas (vírgula para ponto)
+        def sanitizar_coord(val):
+            try:
+                if pd.isna(val):
+                    return None
+                return float(str(val).replace(",", ".").strip())
+            except ValueError:
+                return None
+
+        df["lat"] = df["LATITUDE"].apply(sanitizar_coord)
+        df["lon"] = df["LONGITUDE"].apply(sanitizar_coord)
+        return df
+    except Exception as e:
+        st.error(f"Erro ao ler a planilha {NOME_ARQUIVO_PLANILHA}: {e}")
+        return pd.DataFrame()
+
+DF_CLIENTES = carregar_base_clientes()
+LISTA_CIDADES = sorted([c for c in DF_CLIENTES["CIDADE"].unique() if c]) if not DF_CLIENTES.empty else []
+
+# Dicionário geral para busca rápida de nomes
+MAPA_GERAL_NOMES = {}
+if not DF_CLIENTES.empty:
+    for _, r in DF_CLIENTES.iterrows():
+        MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']} - {r['BAIRRO']} ({r['CIDADE']}/{r['UF']})"
 
 # ==============================================================================
 # INTEGRAÇÃO COM A API DO GITHUB
@@ -54,13 +95,16 @@ def carregar_dados_github(caminho_arquivo):
     url = f"https://api.github.com/repos/{repo}/contents/{caminho_arquivo}?ref={branch}"
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
     
-    response = requests.get(url, headers=headers)
-    if response.status_code == 200:
-        data = response.json()
-        conteudo_base64 = data.get("content", "")
-        sha = data.get("sha", "")
-        conteudo_json = json.loads(base64.b64decode(conteudo_base64).decode('utf-8'))
-        return conteudo_json, sha
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            conteudo_base64 = data.get("content", "")
+            sha = data.get("sha", "")
+            conteudo_json = json.loads(base64.b64decode(conteudo_base64).decode('utf-8'))
+            return conteudo_json, sha
+    except requests.RequestException:
+        pass
     return None, None
 
 def salvar_dados_github(caminho_arquivo, dados_dict, sha_existente=None, mensagem_commit="Atualização de KM"):
@@ -83,18 +127,30 @@ def salvar_dados_github(caminho_arquivo, dados_dict, sha_existente=None, mensage
     if sha_existente:
         payload["sha"] = sha_existente
 
-    response = requests.put(url, headers=headers, json=payload)
-    return response.status_code in [200, 201]
+    try:
+        response = requests.put(url, headers=headers, json=payload, timeout=10)
+        return response.status_code in [200, 201]
+    except requests.RequestException as e:
+        st.error(f"Erro ao salvar dados no GitHub: {e}")
+        return False
 
 # ==============================================================================
 # AUXILIARES
 # ==============================================================================
-def calcular_intervalo_semana(num_semana, ano=2026):
+def calcular_intervalo_semana(num_semana, ano=None):
+    if ano is None:
+        ano = datetime.now().year
     start = datetime(ano, 1, 1)
     start -= timedelta(days=start.weekday())
     segunda = start + timedelta(weeks=num_semana - 1)
     domingo = segunda + timedelta(days=6)
     return segunda, domingo
+
+def converter_float(val):
+    try:
+        return float(str(val).replace(',', '.').strip())
+    except (ValueError, TypeError):
+        return 0.0
 
 # ==============================================================================
 # INTERFACE PRINCIPAL
@@ -103,11 +159,10 @@ st.title("🚗 Controle de KM")
 st.subheader("Minassal - Lançamento Semanal")
 
 col1, col2 = st.columns([2, 1])
-
 with col1:
     promotor_sel = st.selectbox("Promotor(a):", PROMOTORES)
 
-semana_atual_default = datetime.now().isocalendar()[1]
+semana_atual_default = int(datetime.now().isocalendar()[1])
 with col2:
     num_semana = st.number_input("Nº Semana:", min_value=1, max_value=53, value=semana_atual_default)
 
@@ -131,6 +186,7 @@ st.divider()
 dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 detalhes_dias = []
 km_total_calculado = 0.0
+km_fim_anterior = 0.0
 
 mapa_dados_salvos = {}
 if dados_salvos and "detalhes" in dados_salvos:
@@ -138,15 +194,12 @@ if dados_salvos and "detalhes" in dados_salvos:
 
 st.markdown("### 📋 Registros Diários")
 
-km_fim_anterior = "0"
-
 for i, dia_nome in enumerate(dias_semana):
     data_dia = (segunda + timedelta(days=i)).strftime("%d/%m")
     dados_dia_salvo = mapa_dados_salvos.get(dia_nome, {})
 
     with st.expander(f"📌 **{dia_nome} ({data_dia})**", expanded=(i == 0 or bool(dados_dia_salvo))):
         col_sit, col_lei = st.columns([2, 1])
-        
         with col_sit:
             sit_default = dados_dia_salvo.get("sit", "Normal")
             idx_sit = SITUACOES.index(sit_default) if sit_default in SITUACOES else 0
@@ -157,46 +210,78 @@ for i, dia_nome in enumerate(dias_semana):
             lei_sel = st.checkbox("Leituras?", value=lei_default, key=f"lei_{dia_nome}")
 
         col_kmi, col_kmf = st.columns(2)
-        
         with col_kmi:
-            val_kmi_default = dados_dia_salvo.get("km_ini", km_fim_anterior)
-            km_ini_str = st.text_input(f"KM Inicial", value=str(val_kmi_default), key=f"kmi_{dia_nome}")
+            def_kmi = converter_float(dados_dia_salvo.get("km_ini", km_fim_anterior))
+            km_ini = st.number_input(f"KM Inicial ({dia_nome})", min_value=0.0, value=def_kmi, step=1.0, key=f"kmi_{dia_nome}")
 
         with col_kmf:
-            val_kmf_default = dados_dia_salvo.get("km_fim", "0")
-            km_fim_str = st.text_input(f"KM Final", value=str(val_kmf_default), key=f"kmf_{dia_nome}")
+            def_kmf = converter_float(dados_dia_salvo.get("km_fim", def_kmi))
+            km_fim = st.number_input(f"KM Final ({dia_nome})", min_value=0.0, value=def_kmf, step=1.0, key=f"kmf_{dia_nome}")
 
-        if km_fim_str and km_fim_str != "0":
-            km_fim_anterior = km_fim_str
-
-        cli_default = ", ".join(dados_dia_salvo.get("clientes", [])) if isinstance(dados_dia_salvo.get("clientes"), list) else ""
-        clientes_str = st.text_input("Códigos dos Clientes:", value=cli_default, key=f"cli_{dia_nome}")
-
-        try:
-            k_i = float(km_ini_str.replace(',', '.'))
-            k_f = float(km_fim_str.replace(',', '.'))
-            km_dia = max(0.0, k_f - k_i)
-        except ValueError:
-            km_dia = 0.0
-
-        if km_dia > 0:
-            st.caption(f"🚘 KM Rodado no dia: **{km_dia:.1f} km**")
+        km_dia = 0.0
+        if km_fim > 0.0:
+            if km_fim < km_ini:
+                st.error("⚠️ KM Final não pode ser menor que o KM Inicial!")
+            else:
+                km_dia = km_fim - km_ini
+                km_fim_anterior = km_fim
+                st.caption(f"🚘 KM Rodado no dia: **{km_dia:.1f} km**")
 
         km_total_calculado += km_dia
 
-        lista_cods = [c.strip() for c in clientes_str.split(',') if c.strip()]
+        # --- SELEÇÃO DE CLIENTES (CIDADE + LOJA) ---
+        cidade_sel = st.selectbox(
+            f"Filtrar por Cidade ({dia_nome}):",
+            options=["TODAS"] + LISTA_CIDADES,
+            key=f"cid_{dia_nome}"
+        )
+
+        if cidade_sel != "TODAS" and not DF_CLIENTES.empty:
+            df_opcoes = DF_CLIENTES[DF_CLIENTES["CIDADE"] == cidade_sel]
+        else:
+            df_opcoes = DF_CLIENTES
+
+        opcoes_cods = df_opcoes["CÓDIGO"].tolist() if not df_opcoes.empty else []
+        cods_salvos = [str(c) for c in dados_dia_salvo.get("clientes", [])]
+        
+        # Garante que lojas previamente salvas continuem na lista mesmo que o filtro mude
+        opcoes_finais = list(dict.fromkeys(cods_salvos + opcoes_cods))
+
+        clientes_sel = st.multiselect(
+            f"Lojas Atendidas ({dia_nome}):",
+            options=opcoes_finais,
+            default=cods_salvos,
+            format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
+            key=f"cli_{dia_nome}"
+        )
+
+        # --- EXIBIÇÃO DE ENDEREÇO E MAPA DO DIA ---
+        if clientes_sel and not DF_CLIENTES.empty:
+            df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_sel)]
+
+            with st.expander(f"📍 Endereços Visitados ({len(clientes_sel)})"):
+                for _, row in df_atendidos.iterrows():
+                    st.markdown(f"**{row['NOME']}**  \n🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE']}/{row['UF']}")
+
+            df_mapa = df_atendidos.dropna(subset=["lat", "lon"])
+            if not df_mapa.empty:
+                st.caption("🗺️ Rota / Locais no Mapa:")
+                st.map(df_mapa[["lat", "lon"]], zoom=11)
+
         detalhes_dias.append({
             "dia": dia_nome,
             "data": data_dia,
             "km": km_dia,
             "sit": sit_sel,
-            "clientes": lista_cods,
+            "clientes": clientes_sel,
             "leitura": lei_sel,
-            "km_ini": km_ini_str,
-            "km_fim": km_fim_str
+            "km_ini": km_ini,
+            "km_fim": km_fim
         })
 
+# ==============================================================================
 # GASTOS EXTRAS
+# ==============================================================================
 st.divider()
 st.markdown("### 💰 Gastos Extras (Opção)")
 
@@ -206,34 +291,31 @@ qtd_gastos = max(1, len(gastos_salvos_default))
 gastos_extras = []
 for idx in range(qtd_gastos):
     g_item = gastos_salvos_default[idx] if idx < len(gastos_salvos_default) else {}
-    
     col_desc, col_val, col_inf = st.columns([3, 2, 1])
+    
     with col_desc:
         g_desc = st.text_input(f"Descrição #{idx+1}", value=g_item.get("desc", ""), key=f"gdesc_{idx}")
     with col_val:
-        g_val = st.text_input(f"Valor R$ #{idx+1}", value=str(g_item.get("valor", "0.00")), key=f"gval_{idx}")
+        v_salvo = converter_float(g_item.get("valor", 0.0))
+        g_val = st.number_input(f"Valor R$ #{idx+1}", min_value=0.0, value=v_salvo, step=1.0, key=f"gval_{idx}")
     with col_inf:
         g_inf = st.checkbox("Info", value=g_item.get("informativo", False), key=f"ginf_{idx}")
 
     if g_desc.strip():
-        try:
-            v_float = float(g_val.replace(',', '.'))
-        except ValueError:
-            v_float = 0.0
-        gastos_extras.append({"desc": g_desc.strip(), "valor": v_float, "informativo": g_inf})
+        gastos_extras.append({"desc": g_desc.strip(), "valor": g_val, "informativo": g_inf})
 
-# RESUMO DE VALORES
+# ==============================================================================
+# RESUMO E AÇÕES
+# ==============================================================================
 st.divider()
 VALOR_KM_TAXA = 1.17
 valor_total_km = km_total_calculado * VALOR_KM_TAXA
 valor_extras_reembolsavel = sum(g["valor"] for g in gastos_extras if not g.get("informativo", False))
 valor_total_geral = valor_total_km + valor_extras_reembolsavel
 
-st.metric(label="Total KM Rodado na Semana", value=f"{km_total_calculado:.1f} km")
-st.metric(label="Valor Total de Reembolso Estimado", value=f"R$ {valor_total_geral:.2f}")
-
-# BOTÕES DE AÇÃO
-col_btn1, col_btn2 = st.columns(2)
+col_m1, col_m2 = st.columns(2)
+col_m1.metric("Total KM", f"{km_total_calculado:.1f} km")
+col_m2.metric("Total Reembolso", f"R$ {valor_total_geral:.2f}")
 
 def construir_payload(status_envio):
     return {
@@ -248,6 +330,8 @@ def construir_payload(status_envio):
         "detalhes": detalhes_dias
     }
 
+col_btn1, col_btn2 = st.columns(2)
+
 with col_btn1:
     if st.button("💾 Salvar Rascunho"):
         payload = construir_payload("RASCUNHO")
@@ -258,7 +342,7 @@ with col_btn1:
             mensagem_commit=f"Rascunho S{num_semana} - {promotor_sel}"
         )
         if sucesso:
-            st.success("Rascunho salvo no GitHub com sucesso!")
+            st.success("Rascunho salvo no GitHub!")
             st.rerun()
 
 with col_btn2:
@@ -272,5 +356,5 @@ with col_btn2:
         )
         if sucesso:
             st.balloons()
-            st.success("Semana FINALIZADA e enviada com sucesso!")
+            st.success("Semana finalizada com sucesso!")
             st.rerun()
