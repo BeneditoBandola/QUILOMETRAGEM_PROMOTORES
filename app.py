@@ -5,6 +5,7 @@ import json
 import base64
 import glob
 import unicodedata
+import pydeck as pdk
 from datetime import datetime, timedelta
 
 # ==============================================================================
@@ -26,37 +27,62 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# CADASTRO DE PROMOTORES E SUAS CIDADES DA ROTA
+# DADOS DOS PROMOTORES (ENDEREÇOS E CIDADES DA ROTA)
 # ==============================================================================
-PROMOTORES = [
-    "Pamela Camila de Almeida Alexandrino",
-    "Fernanda Dias Ferreira",
-    "Saruete Valeska Stabile de Oliveira",
-    "Carolina Rodrigues Bruno",
-    "Madalla Teixeira Reis",
-    "Rodrigo Luis Adao"
-]
-
-CIDADES_POR_PROMOTOR = {
-    "Pamela Camila de Almeida Alexandrino": [
-        "POÇOS DE CALDAS", "ANDRADAS", "GUAXUPÉ", "ITAJUBA", "POUSO ALEGRE",
-        "VARGINHA", "TRÊS PONTAS", "TRÊS CORAÇÕES", "MACHADO", "ALFENAS"
-    ],
-    "Fernanda Dias Ferreira": [
-        "JUIZ DE FORA"
-    ],
-    "Saruete Valeska Stabile de Oliveira": [
-        "SÃO JOSÉ DO RIO PRETO", "MIRASSOL", "CATANDUVA"
-    ],
-    "Carolina Rodrigues Bruno": [
-        "SÃO CARLOS", "ARARAQUARA", "MATÃO"
-    ],
-    "Madalla Teixeira Reis": [
-        "UBÁ", "DESCOBERTO", "SÃO JOÃO NEPOMUCENO", "VIÇOSA",
-        "TOCANTINS", "RODEIRO", "PIRAÚBA", "GUARANI", "RIO POMBA", "RIO NOVO"
-    ]
+DADOS_PROMOTORES = {
+    "Pamela Camila de Almeida Alexandrino": {
+        "endereco": "Rua Doutor Rowilson Flora, 753 - Poços de Caldas/MG",
+        "lat": -21.7858,
+        "lon": -46.5625,
+        "cidades": [
+            "POÇOS DE CALDAS", "ANDRADAS", "GUAXUPÉ", "ITAJUBA", "POUSO ALEGRE",
+            "VARGINHA", "TRÊS PONTAS", "TRÊS CORAÇÕES", "MACHADO", "ALFENAS"
+        ]
+    },
+    "Fernanda Dias Ferreira": {
+        "endereco": "Rua Jorge Raimundo, 409 - Juiz de Fora/MG",
+        "lat": -21.7642,
+        "lon": -43.3496,
+        "cidades": [
+            "JUIZ DE FORA"
+        ]
+    },
+    "Saruete Valeska Stabile de Oliveira": {
+        "endereco": "Rua José Gonçalves de Souza, 105 - São José do Rio Preto/SP",
+        "lat": -20.8113,
+        "lon": -49.3758,
+        "cidades": [
+            "SÃO JOSÉ DO RIO PRETO", "MIRASSOL", "CATANDUVA"
+        ]
+    },
+    "Carolina Rodrigues Bruno": {
+        "endereco": "Rua Doutor Bernardino de Campos - São Carlos/SP",
+        "lat": -22.0175,
+        "lon": -47.8908,
+        "cidades": [
+            "SÃO CARLOS", "ARARAQUARA", "MATÃO"
+        ]
+    },
+    "Madalla Teixeira Reis": {
+        "endereco": "Rua Odilon Machado, 105 - Tocantins/MG",
+        "lat": -21.1764,
+        "lon": -43.0181,
+        "cidades": [
+            "UBÁ", "DESCOBERTO", "SÃO JOÃO NEPOMUCENO", "VIÇOSA",
+            "TOCANTINS", "RODEIRO", "PIRAÚBA", "GUARANI", "RIO POMBA", "RIO NOVO"
+        ]
+    },
+    "Rodrigo Luis Adao": {
+        "endereco": "Avenida Professora Edul Rangel Rabello, 405 - Ribeirão Preto/SP",
+        "lat": -21.2075,
+        "lon": -47.7981,
+        "cidades": [
+            "RIBEIRÃO PRETO"
+        ]
+    }
 }
 
+PROMOTORES = list(DADOS_PROMOTORES.keys())
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
 NOME_ARQUIVO_PLANILHA = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
 
@@ -133,7 +159,6 @@ def carregar_base_clientes():
 
 DF_CLIENTES = carregar_base_clientes()
 
-# Rótulo de visualização para cada cliente
 MAPA_GERAL_NOMES = {}
 if not DF_CLIENTES.empty:
     for _, r in DF_CLIENTES.iterrows():
@@ -141,9 +166,10 @@ if not DF_CLIENTES.empty:
         cidade_str = f" ({r['CIDADE_RAW']}/{r['UF']})" if r['CIDADE_RAW'] else ""
         MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']}{bairro_str}{cidade_str}"
 
-# Identifica as cidades vinculadas ao promotor logado
+# Dados do promotor logado
 usuario_logado = st.session_state.usuario_ativo
-cidades_definidas = CIDADES_POR_PROMOTOR.get(usuario_logado, [])
+dados_promotor_atual = DADOS_PROMOTORES.get(usuario_logado, {})
+cidades_definidas = dados_promotor_atual.get("cidades", [])
 cidades_norm_promotor = [normalizar_texto(c) for c in cidades_definidas]
 
 if not DF_CLIENTES.empty:
@@ -248,6 +274,7 @@ with col_sair:
         st.rerun()
 
 st.caption(f"👤 Promotor(a): **{promotor_sel}**")
+st.caption(f"🏠 Residência: {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
 
 semana_atual_default = int(datetime.now().isocalendar()[1])
 num_semana = st.number_input("Nº da Semana:", min_value=1, max_value=53, value=semana_atual_default)
@@ -270,7 +297,7 @@ if dados_salvos:
 st.divider()
 
 # ==============================================================================
-# REGISTROS DIÁRIOS COM SUBMENU POR CIDADE
+# REGISTROS DIÁRIOS
 # ==============================================================================
 dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 detalhes_dias = []
@@ -329,18 +356,14 @@ for i, dia_nome in enumerate(dias_semana):
 
         if not DF_CLIENTES.empty:
             for cid_norm in cidades_disponiveis_promotor:
-                # Localiza clientes daquela cidade
                 df_cidade = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_norm]
                 if df_cidade.empty:
                     continue
                 
                 nome_cidade_exibicao = df_cidade["CIDADE_RAW"].iloc[0]
                 codigos_da_cidade = df_cidade["CÓDIGO"].tolist()
-                
-                # Preenche com os códigos que já estavam salvos para esta cidade
                 defaults_cidade = [c for c in cods_salvos_dia if c in codigos_da_cidade]
 
-                # Submenu sanfona por cidade
                 with st.expander(f"🏙️ {nome_cidade_exibicao} ({len(df_cidade)} lojas)", expanded=bool(defaults_cidade)):
                     escolhidos_cid = st.multiselect(
                         f"Lojas em {nome_cidade_exibicao}:",
@@ -351,7 +374,7 @@ for i, dia_nome in enumerate(dias_semana):
                     )
                     clientes_dia_selecionados.extend(escolhidos_cid)
 
-            # Opção para selecionar fora da rota usual caso necessário
+            # Opção de busca em cidade fora da rota
             with st.expander("🌐 Outra Cidade / Fora da Rota Usual", expanded=False):
                 cidades_fora = [c for c in todas_cidades_norm if c not in cidades_disponiveis_promotor]
                 cid_extra = st.selectbox(f"Escolha a cidade fora da rota ({dia_nome}):", ["-- Selecione --"] + cidades_fora, key=f"extra_cid_{dia_nome}")
@@ -368,21 +391,82 @@ for i, dia_nome in enumerate(dias_semana):
                     )
                     clientes_dia_selecionados.extend(escolhidos_extra)
 
-        # Garante a lista sem duplicidades
         clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
 
-        # --- EXIBIÇÃO RESUMIDA DAS LOJAS SELECIONADAS E MAPA ---
+        # ==============================================================================
+        # MAPA INTERATIVO: LIGA A CASA DO PROMOTOR ÀS LOJAS ATENDIDAS
+        # ==============================================================================
         if clientes_dia_selecionados and not DF_CLIENTES.empty:
             df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
 
-            with st.expander(f"📍 Lojas Selecionadas no Dia ({len(clientes_dia_selecionados)})", expanded=True):
+            with st.expander(f"📍 Endereços Selecionados ({len(clientes_dia_selecionados)})", expanded=True):
                 for _, row in df_atendidos.iterrows():
                     st.markdown(f"**{row['NOME']}**  \n🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
 
-            df_mapa = df_atendidos.dropna(subset=["lat", "lon"])
-            if not df_mapa.empty:
-                st.caption("🗺️ Rota no Mapa:")
-                st.map(df_mapa[["lat", "lon"]], zoom=11)
+            df_coords = df_atendidos.dropna(subset=["lat", "lon"]).copy()
+
+            if not df_coords.empty and "lat" in dados_promotor_atual:
+                st.caption("🗺️ Rota: Casa do Promotor (Azul) ➔ Lojas Atendidas (Vermelho):")
+                
+                lat_casa = dados_promotor_atual["lat"]
+                lon_casa = dados_promotor_atual["lon"]
+
+                # Camada 1: Ponto da Casa do Promotor (Azul)
+                ponto_casa = pd.DataFrame([{
+                    "nome": f"Casa: {promotor_sel}",
+                    "lat": lat_casa,
+                    "lon": lon_casa
+                }])
+                camada_casa = pdk.Layer(
+                    "ScatterplotLayer",
+                    data=ponto_casa,
+                    get_position=["lon", "lat"],
+                    get_color=[0, 100, 255, 200],  # Azul
+                    get_radius=800,
+                    pickable=True
+                )
+
+                # Camada 2: Pontos das Lojas Atendidas (Vermelho)
+                camada_lojas = pdk.Layer(
+                    "ScatterplotLayer",
+                    data=df_coords,
+                    get_position=["lon", "lat"],
+                    get_color=[230, 40, 40, 200],  # Vermelho
+                    get_radius=500,
+                    pickable=True
+                )
+
+                # Camada 3: Linhas conectando Casa ➔ Lojas
+                linhas_rotas = []
+                for _, r in df_coords.iterrows():
+                    linhas_rotas.append({
+                        "origem": [lon_casa, lat_casa],
+                        "destino": [r["lon"], r["lat"]]
+                    })
+                df_linhas = pd.DataFrame(linhas_rotas)
+
+                camada_linhas = pdk.Layer(
+                    "LineLayer",
+                    data=df_linhas,
+                    get_source_position="origem",
+                    get_target_position="destino",
+                    get_color=[30, 30, 30, 160],  # Linha escura semi-transparente
+                    get_width=3
+                )
+
+                # Configuração da visualização centrada
+                viewport = pdk.ViewState(
+                    latitude=lat_casa,
+                    longitude=lon_casa,
+                    zoom=10,
+                    pitch=0
+                )
+
+                st.pydeck_chart(pdk.Deck(
+                    layers=[camada_linhas, camada_casa, camada_lojas],
+                    initial_view_state=viewport,
+                    map_style="road"
+                ))
 
         detalhes_dias.append({
             "dia": dia_nome,
@@ -396,11 +480,11 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS (REEMBOLSÁVEIS E INFORMATIVOS)
+# GASTOS EXTRAS (TODOS SOMAM DIRETAMENTE NO REEMBOLSO)
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 Gastos Extras da Semana")
-st.caption("Marque a caixa **'Info (Não Reembolsar)'** caso a despesa seja apenas informativa (ex: pedágio pago pela empresa via tag).")
+st.caption("Adicione aqui despesas de viagem (alimentação, estacionamento, pedágio, etc.).")
 
 gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
 qtd_gastos = max(1, len(gastos_salvos_default))
@@ -408,45 +492,32 @@ qtd_gastos = max(1, len(gastos_salvos_default))
 gastos_extras = []
 for idx in range(qtd_gastos):
     g_item = gastos_salvos_default[idx] if idx < len(gastos_salvos_default) else {}
-    col_desc, col_val, col_inf = st.columns([3, 2, 1.5])
+    col_desc, col_val = st.columns([3, 2])
     
     with col_desc:
-        g_desc = st.text_input(f"Despesa #{idx+1}", value=g_item.get("desc", ""), placeholder="Ex: Estacionamento, Café...", key=f"gdesc_{idx}")
+        g_desc = st.text_input(f"Despesa #{idx+1}", value=g_item.get("desc", ""), placeholder="Ex: Estacionamento, Refeição...", key=f"gdesc_{idx}")
     with col_val:
         v_salvo = converter_float(g_item.get("valor", 0.0))
         g_val = st.number_input(f"Valor R$ #{idx+1}", min_value=0.0, value=v_salvo, step=1.0, key=f"gval_{idx}")
-    with col_inf:
-        st.write("")
-        g_inf = st.checkbox("Apenas Info", value=g_item.get("informativo", False), key=f"ginf_{idx}")
 
     if g_desc.strip():
-        gastos_extras.append({"desc": g_desc.strip(), "valor": g_val, "informativo": g_inf})
+        gastos_extras.append({"desc": g_desc.strip(), "valor": g_val})
 
 # ==============================================================================
-# RESUMO FINANCEIRO COMPLETO E ENVIO
+# RESUMO FINANCEIRO E FINALIZAÇÃO
 # ==============================================================================
 st.divider()
 st.markdown("### 📊 Fechamento da Semana")
 
 VALOR_KM_TAXA = 1.17
 valor_total_km = km_total_calculado * VALOR_KM_TAXA
-
-# Gastos que entram no reembolso (sem flag informativo)
-valor_extras_reembolsavel = sum(g["valor"] for g in gastos_extras if not g.get("informativo", False))
-
-# Gastos que são apenas informativos
-valor_extras_apenas_info = sum(g["valor"] for g in gastos_extras if g.get("informativo", False))
-
-# Total a pagar ao promotor
-valor_total_reembolso = valor_total_km + valor_extras_reembolsavel
+valor_extras_total = sum(g["valor"] for g in gastos_extras)
+valor_total_reembolso = valor_total_km + valor_extras_total
 
 c_km, c_ext, c_tot = st.columns(3)
 c_km.metric("Reembolso KM", f"R$ {valor_total_km:.2f}", help=f"{km_total_calculado:.1f} km x R$ {VALOR_KM_TAXA}")
-c_ext.metric("Reembolso Extras", f"R$ {valor_extras_reembolsavel:.2f}")
-c_tot.metric("Total a Reembolsar", f"R$ {valor_total_reembolso:.2f}")
-
-if valor_extras_apenas_info > 0:
-    st.info(f"ℹ️ **Gastos Informativos registrados (não somam no reembolso):** R$ {valor_extras_apenas_info:.2f}")
+c_ext.metric("Gastos Extras", f"R$ {valor_extras_total:.2f}")
+c_tot.metric("Total a Receber", f"R$ {valor_total_reembolso:.2f}")
 
 def construir_payload(status_envio):
     return {
@@ -457,8 +528,7 @@ def construir_payload(status_envio):
         "status": status_envio,
         "km_total": km_total_calculado,
         "valor_km": valor_total_km,
-        "valor_extras_reembolsavel": valor_extras_reembolsavel,
-        "valor_extras_informativo": valor_extras_apenas_info,
+        "valor_extras": valor_extras_total,
         "valor_total": valor_total_reembolso,
         "gastos_extras": gastos_extras,
         "detalhes": detalhes_dias
