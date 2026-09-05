@@ -4,6 +4,7 @@ import requests
 import json
 import base64
 import glob
+import unicodedata
 from datetime import datetime, timedelta
 
 # ==============================================================================
@@ -24,19 +25,44 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# CADASTRO DE PROMOTORES E CONFIGURAÇÕES
+# CADASTRO DE PROMOTORES E SUAS CIDADES
 # ==============================================================================
 PROMOTORES = [
-    "Carolina Rodrigues Bruno",
-    "Fernanda Dias Ferreira",
-    "Madalla Teixeira Reis",
     "Pamela Camila de Almeida Alexandrino",
-    "Rodrigo Luis Adao",
-    "Saruete Valeska Stabile de Oliveira"
+    "Fernanda Dias Ferreira",
+    "Saruete Valeska Stabile de Oliveira",
+    "Carolina Rodrigues Bruno",
+    "Madalla Teixeira Reis",
+    "Rodrigo Luis Adao"
 ]
+
+CIDADES_POR_PROMOTOR = {
+    "Pamela Camila de Almeida Alexandrino": [
+        "POÇOS DE CALDAS", "ANDRADAS", "GUAXUPÉ", "ITAJUBA", "POUSO ALEGRE",
+        "VARGINHA", "TRÊS PONTAS", "TRÊS CORAÇÕES", "MACHADO", "ALFENAS"
+    ],
+    "Fernanda Dias Ferreira": [
+        "JUIZ DE FORA"
+    ],
+    "Saruete Valeska Stabile de Oliveira": [
+        "SÃO JOSÉ DO RIO PRETO", "MIRASSOL", "CATANDUVA"
+    ],
+    "Carolina Rodrigues Bruno": [
+        "SÃO CARLOS", "ARARAQUARA", "MATÃO"
+    ],
+    "Madalla Teixeira Reis": [
+        "UBÁ", "DESCOBERTO", "SÃO JOÃO NEPOMUCENO", "VIÇOSA",
+        "TOCANTINS", "RODEIRO", "PIRAÚBA", "GUARANI", "RIO POMBA", "RIO NOVO"
+    ]
+}
 
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
 NOME_ARQUIVO_PLANILHA = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
+
+def normalizar_texto(txt):
+    if not txt:
+        return ""
+    return unicodedata.normalize('NFKD', str(txt)).encode('ASCII', 'ignore').decode('utf-8').strip().upper()
 
 # ==============================================================================
 # TELA DE IDENTIFICAÇÃO (QUEM É VOCÊ?)
@@ -83,7 +109,8 @@ def carregar_base_clientes():
         
         df["CÓDIGO"] = df["CÓDIGO"].astype(int).astype(str).str.strip()
         df["NOME"] = df["NOME"].astype(str).str.strip()
-        df["CIDADE"] = df["CIDADE"].fillna("NÃO INFORMADA").astype(str).str.strip().str.upper()
+        df["CIDADE_RAW"] = df["CIDADE"].fillna("NÃO INFORMADA").astype(str).str.strip().str.upper()
+        df["CIDADE_NORM"] = df["CIDADE_RAW"].apply(normalizar_texto)
         df["BAIRRO"] = df["BAIRRO"].fillna("").astype(str).str.strip()
         df["ENDEREÇO"] = df["ENDEREÇO"].fillna("").astype(str).str.strip()
         df["UF"] = df["UF"].fillna("").astype(str).str.strip()
@@ -104,14 +131,27 @@ def carregar_base_clientes():
         return pd.DataFrame()
 
 DF_CLIENTES = carregar_base_clientes()
-LISTA_CIDADES = sorted([c for c in DF_CLIENTES["CIDADE"].unique() if c]) if not DF_CLIENTES.empty else []
 
 MAPA_GERAL_NOMES = {}
 if not DF_CLIENTES.empty:
     for _, r in DF_CLIENTES.iterrows():
         bairro_str = f" - {r['BAIRRO']}" if r['BAIRRO'] else ""
-        cidade_str = f" ({r['CIDADE']}/{r['UF']})" if r['CIDADE'] else ""
+        cidade_str = f" ({r['CIDADE_RAW']}/{r['UF']})" if r['CIDADE_RAW'] else ""
         MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']}{bairro_str}{cidade_str}"
+
+# Determina as cidades permitidas para o promotor logado
+usuario_logado = st.session_state.usuario_ativo
+cidades_definidas = CIDADES_POR_PROMOTOR.get(usuario_logado, [])
+cidades_norm_promotor = [normalizar_texto(c) for c in cidades_definidas]
+
+if not DF_CLIENTES.empty:
+    todas_cidades_norm = sorted(list(DF_CLIENTES["CIDADE_NORM"].unique()))
+    if cidades_norm_promotor:
+        cidades_disponiveis_promotor = [c for c in cidades_norm_promotor if c in todas_cidades_norm]
+    else:
+        cidades_disponiveis_promotor = todas_cidades_norm
+else:
+    cidades_disponiveis_promotor = []
 
 # ==============================================================================
 # INTEGRAÇÃO COM GITHUB
@@ -201,14 +241,14 @@ with col_tit:
     st.title("🚗 Controle de KM")
 with col_sair:
     st.write("")
-    if st.button("Trocar Usuário 🔄"):
+    if st.button("Trocar Promotor 🔄"):
         st.session_state.usuario_ativo = None
         st.rerun()
 
-st.caption(f"👤 Conectado como: **{promotor_sel}**")
+st.caption(f"👤 Promotor(a): **{promotor_sel}**")
 
 semana_atual_default = int(datetime.now().isocalendar()[1])
-num_semana = st.number_input("Nº da Semana de Trabalho:", min_value=1, max_value=53, value=semana_atual_default)
+num_semana = st.number_input("Nº da Semana:", min_value=1, max_value=53, value=semana_atual_default)
 
 segunda, domingo = calcular_intervalo_semana(num_semana)
 intervalo_str = f"{segunda.strftime('%d/%m')} a {domingo.strftime('%d/%m')}"
@@ -221,7 +261,7 @@ dados_salvos, sha_arquivo = carregar_dados_github(caminho_github)
 
 if dados_salvos:
     if dados_salvos.get("status") == "FINALIZADO":
-        st.success("✅ Esta semana já foi FINALIZADA por você.")
+        st.success("✅ Esta semana já foi FINALIZADA.")
     else:
         st.warning("📝 Rascunho salvo anteriormente carregado!")
 
@@ -276,17 +316,26 @@ for i, dia_nome in enumerate(dias_semana):
 
         km_total_calculado += km_dia
 
-        # --- SELEÇÃO DE CLIENTES (CIDADE + MULTISELECT) ---
+        # --- OPÇÕES DE CIDADES CUSTOMIZADAS POR PROMOTOR ---
+        opcoes_cidades = ["TODAS DA MINHA ROTA"] + cidades_disponiveis_promotor + ["OUTRAS CIDADES..."]
         cidade_sel = st.selectbox(
-            f"Filtrar por Cidade ({dia_nome}):",
-            options=["TODAS"] + LISTA_CIDADES,
+            f"Cidade de Atendimento ({dia_nome}):",
+            options=opcoes_cidades,
             key=f"cid_{dia_nome}"
         )
 
-        if cidade_sel != "TODAS" and not DF_CLIENTES.empty:
-            df_opcoes = DF_CLIENTES[DF_CLIENTES["CIDADE"] == cidade_sel]
+        if not DF_CLIENTES.empty:
+            if cidade_sel == "TODAS DA MINHA ROTA":
+                if cidades_disponiveis_promotor:
+                    df_opcoes = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"].isin(cidades_disponiveis_promotor)]
+                else:
+                    df_opcoes = DF_CLIENTES
+            elif cidade_sel == "OUTRAS CIDADES...":
+                df_opcoes = DF_CLIENTES
+            else:
+                df_opcoes = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cidade_sel]
         else:
-            df_opcoes = DF_CLIENTES
+            df_opcoes = pd.DataFrame()
 
         opcoes_cods = df_opcoes["CÓDIGO"].tolist() if not df_opcoes.empty else []
         cods_salvos = [str(c) for c in dados_dia_salvo.get("clientes", [])]
@@ -300,17 +349,17 @@ for i, dia_nome in enumerate(dias_semana):
             key=f"cli_{dia_nome}"
         )
 
-        # --- EXIBIÇÃO DE ENDEREÇOS E MAPA DO DIA ---
+        # --- EXIBIÇÃO DOS LOCAIS E MAPA DO DIA ---
         if clientes_sel and not DF_CLIENTES.empty:
             df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_sel)]
 
             with st.expander(f"📍 Endereços Visitados ({len(clientes_sel)})"):
                 for _, row in df_atendidos.iterrows():
-                    st.markdown(f"**{row['NOME']}**  \n🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE']}/{row['UF']}")
+                    st.markdown(f"**{row['NOME']}**  \n🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
 
             df_mapa = df_atendidos.dropna(subset=["lat", "lon"])
             if not df_mapa.empty:
-                st.caption("🗺️ Rota / Locais no Mapa:")
+                st.caption("🗺️ Locais das Lojas Atendidas:")
                 st.map(df_mapa[["lat", "lon"]], zoom=11)
 
         detalhes_dias.append({
