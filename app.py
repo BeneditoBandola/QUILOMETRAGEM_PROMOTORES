@@ -11,7 +11,7 @@ import pydeck as pdk
 from datetime import datetime, timedelta
 
 # ==============================================================================
-# CONFIGURAÇÃO DA PÁGINA (OTIMIZADA PARA CELULAR)
+# CONFIGURAÇÃO DA PÁGINA (TEMA DARK + AMARELO OURO)
 # ==============================================================================
 st.set_page_config(
     page_title="Minassal - Controle de KM",
@@ -20,16 +20,87 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Estilização visual inspirada na identidade de alto contraste
 st.markdown("""
     <style>
-    .main { padding: 10px; }
-    .stButton>button { width: 100%; border-radius: 8px; font-weight: bold; }
-    div[data-testid="stExpander"] div[role="button"] p { font-weight: bold; }
+    /* Fundo geral preto profundo */
+    .stApp {
+        background-color: #050505;
+        color: #EDEDED;
+    }
+    
+    /* Cabeçalhos em branco absoluto e caixa alta */
+    h1, h2, h3, h4 {
+        color: #FFFFFF !important;
+        font-weight: 900 !important;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Botões principais no estilo amarelo ouro com texto preto */
+    .stButton>button {
+        width: 100%;
+        background-color: #FDD818 !important;
+        color: #000000 !important;
+        font-weight: 900 !important;
+        font-size: 15px !important;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        border: none !important;
+        border-radius: 4px !important;
+        padding: 10px 18px !important;
+        transition: all 0.2s ease-in-out;
+    }
+    .stButton>button:hover {
+        background-color: #FFE24A !important;
+        color: #000000 !important;
+        transform: translateY(-1px);
+    }
+    
+    /* Estilização dos acordeões (Expanders) */
+    div[data-testid="stExpander"] {
+        background-color: #121212 !important;
+        border: 1px solid #242424 !important;
+        border-radius: 6px !important;
+        margin-bottom: 12px;
+    }
+    div[data-testid="stExpander"] summary {
+        color: #FFFFFF !important;
+        font-weight: 700 !important;
+    }
+    div[data-testid="stExpander"] summary:hover {
+        color: #FDD818 !important;
+    }
+
+    /* Inputs de texto e selects */
+    .stTextInput input, .stSelectbox [data-baseweb="select"] {
+        background-color: #1A1A1A !important;
+        color: #FFFFFF !important;
+        border: 1px solid #333333 !important;
+        border-radius: 4px !important;
+    }
+    
+    /* Multiselect tags */
+    span[data-baseweb="tag"] {
+        background-color: #FDD818 !important;
+        color: #000000 !important;
+        font-weight: bold !important;
+    }
+
+    /* Cards de métricas */
+    div[data-testid="stMetricValue"] {
+        color: #FDD818 !important;
+        font-weight: 900 !important;
+    }
+    div[data-testid="stMetricLabel"] {
+        color: #A0A0A0 !important;
+        text-transform: uppercase;
+        font-size: 12px !important;
+    }
     </style>
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# DADOS DOS PROMOTORES (ENDEREÇOS E CIDADES DA ROTA)
+# DADOS DOS PROMOTORES
 # ==============================================================================
 DADOS_PROMOTORES = {
     "Pamela Camila de Almeida Alexandrino": {
@@ -89,7 +160,7 @@ SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico
 NOME_PLANILHA_CLIENTES = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
 
 # ==============================================================================
-# AUXILIARES DE FORMATAÇÃO E CÁLCULO DE DISTÂNCIA
+# AUXILIARES DE FORMATAÇÃO E CÁLCULOS
 # ==============================================================================
 def normalizar_texto(txt):
     if not txt:
@@ -151,15 +222,15 @@ if "usuario_ativo" not in st.session_state:
     st.session_state.usuario_ativo = None
 
 if not st.session_state.usuario_ativo:
-    st.markdown("### 👤 Identificação")
-    st.markdown("#### QUEM É VOCÊ?")
+    st.markdown("<h1 style='text-align: center; color: #FDD818 !important;'># ACESSO DE PROMOTORES</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #888;'>SELECIONE SEU PERFIL PARA INICIAR O REGISTRO</p>", unsafe_allow_html=True)
     
     escolha_promotor = st.selectbox(
-        "Selecione o seu nome na lista para continuar:",
+        "QUEM É VOCÊ?",
         options=["-- Selecione seu nome --"] + PROMOTORES
     )
     
-    if st.button("Acessar Sistema 🚀", type="primary"):
+    if st.button("ACESSAR SISTEMA ➔", type="primary"):
         if escolha_promotor != "-- Selecione seu nome --":
             st.session_state.usuario_ativo = escolha_promotor
             st.rerun()
@@ -168,7 +239,7 @@ if not st.session_state.usuario_ativo:
     st.stop()
 
 # ==============================================================================
-# CARREGAMENTO DA BASE CRUZADA (FILTRADA E ORDENADA POR COMPRAS)
+# CARREGAMENTO DA BASE DE CLIENTES E VENDAS
 # ==============================================================================
 @st.cache_data(ttl=1800)
 def carregar_base_cruzada():
@@ -251,7 +322,7 @@ else:
     cidades_disponiveis_promotor = []
 
 # ==============================================================================
-# INTEGRAÇÃO COM A API DO GITHUB
+# INTEGRAÇÃO COM GITHUB
 # ==============================================================================
 def get_github_credentials():
     try:
@@ -317,23 +388,23 @@ promotor_sel = st.session_state.usuario_ativo
 
 col_tit, col_sair = st.columns([3, 1])
 with col_tit:
-    st.title("🚗 Controle de KM")
+    st.markdown("<h2 style='color:#FDD818 !important; margin:0;'># CONTROLE DE KM</h2>", unsafe_allow_html=True)
 with col_sair:
     st.write("")
-    if st.button("Trocar Promotor 🔄"):
+    if st.button("TROCAR 🔄"):
         st.session_state.usuario_ativo = None
         st.session_state.clear()
         st.rerun()
 
-st.caption(f"👤 Promotor(a): **{promotor_sel}**")
-st.caption(f"🏠 Residência: {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
+st.markdown(f"**PROMOTOR(A):** {promotor_sel}")
+st.caption(f"🏠 {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
 
 semana_atual_default = int(datetime.now().isocalendar()[1])
-num_semana = st.number_input("Nº da Semana:", min_value=1, max_value=53, value=semana_atual_default)
+num_semana = st.number_input("Nº DA SEMANA:", min_value=1, max_value=53, value=semana_atual_default)
 
 segunda, domingo = calcular_intervalo_semana(num_semana)
 intervalo_str = f"{segunda.strftime('%d/%m')} a {domingo.strftime('%d/%m')}"
-st.info(f"📅 **Período:** Semana {num_semana} ({intervalo_str})")
+st.markdown(f"<div style='padding:6px 12px; background:#141414; border-left:4px solid #FDD818; margin-bottom:15px;'>📅 <b>PERÍODO:</b> Semana {num_semana} ({intervalo_str})</div>", unsafe_allow_html=True)
 
 nome_prom_limpo = promotor_sel.replace(" ", "_")
 caminho_github = f"dados_promotores/S{num_semana}_{nome_prom_limpo}.json"
@@ -343,8 +414,8 @@ dados_salvos, sha_arquivo = carregar_dados_github(caminho_github)
 esta_finalizado = False
 if dados_salvos and dados_salvos.get("status") == "FINALIZADO":
     esta_finalizado = True
-    st.success("🔒 **Esta semana foi FINALIZADA e transmitida.** Todos os campos estão bloqueados para alteração.")
-    if st.button("🔓 Reabrir Semana para Correção"):
+    st.success("🔒 **SEMANA FINALIZADA E TRANSMITIDA.** Todos os campos estão bloqueados.")
+    if st.button("🔓 REABRIR PARA CORREÇÃO"):
         sucesso_reabrir = salvar_dados_github(
             caminho_github,
             {**dados_salvos, "status": "RASCUNHO"},
@@ -352,10 +423,10 @@ if dados_salvos and dados_salvos.get("status") == "FINALIZADO":
             mensagem_commit=f"Reaberto para edição S{num_semana} - {promotor_sel}"
         )
         if sucesso_reabrir:
-            st.success("Semana destravada com sucesso! Você pode editar agora.")
+            st.success("Semana destravada com sucesso!")
             st.rerun()
 elif dados_salvos:
-    st.warning("📝 Rascunho salvo em aberto. Você pode alterar qualquer dia ou loja à vontade.")
+    st.warning("📝 Rascunho salvo em aberto. Edição liberada.")
 
 st.divider()
 
@@ -371,13 +442,13 @@ mapa_dados_salvos = {}
 if dados_salvos and "detalhes" in dados_salvos:
     mapa_dados_salvos = {d["dia"]: d for d in dados_salvos["detalhes"]}
 
-st.markdown("### 📋 Registros Diários")
+st.markdown("### 📋 REGISTROS DIÁRIOS")
 
 for i, dia_nome in enumerate(dias_semana):
     data_dia = (segunda + timedelta(days=i)).strftime("%d/%m")
     dados_dia_salvo = mapa_dados_salvos.get(dia_nome, {})
 
-    with st.expander(f"📌 **{dia_nome} ({data_dia})**", expanded=(i == 0 or bool(dados_dia_salvo))):
+    with st.expander(f"📌 {dia_nome.upper()} ({data_dia})", expanded=(i == 0 or bool(dados_dia_salvo))):
         col_sit, col_lei = st.columns([2, 1])
         with col_sit:
             sit_default = dados_dia_salvo.get("sit", "Normal")
@@ -399,18 +470,13 @@ for i, dia_nome in enumerate(dias_semana):
                 key=f"lei_{dia_nome}"
             )
 
-        # Condição de liberação de lojas e rota: SOMENTE SE A SITUAÇÃO FOR 'Normal'
         dia_eh_normal = (sit_sel == "Normal")
-
         clientes_dia_selecionados = []
         df_atendidos = pd.DataFrame()
         km_sugerido_circuito = 0.0
 
         if dia_eh_normal:
-            st.markdown("#### 🏬 Lojas Atendidas no Dia")
-            if not esta_finalizado:
-                st.caption("Abra as cidades para selecionar ou ajustar as lojas:")
-
+            st.markdown("#### 🏬 LOJAS ATENDIDAS")
             cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
             session_key_lojas = f"lojas_selecionadas_{dia_nome}"
             if session_key_lojas not in st.session_state:
@@ -437,10 +503,10 @@ for i, dia_nome in enumerate(dias_semana):
                         )
                         clientes_dia_selecionados.extend(escolhidos_cid)
 
-                with st.expander("🌐 Outra Cidade / Fora da Rota Usual", expanded=False):
+                with st.expander("🌐 Outra Cidade / Fora da Rota", expanded=False):
                     cidades_fora = [c for c in todas_cidades_norm if c not in cidades_disponiveis_promotor]
                     cid_extra = st.selectbox(
-                        f"Escolha a cidade fora da rota ({dia_nome}):", 
+                        f"Escolha a cidade ({dia_nome}):", 
                         ["-- Selecione --"] + cidades_fora, 
                         disabled=esta_finalizado,
                         key=f"extra_cid_{dia_nome}"
@@ -462,7 +528,6 @@ for i, dia_nome in enumerate(dias_semana):
             clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
             st.session_state[session_key_lojas] = clientes_dia_selecionados
 
-            # Cálculo de sugestão de circuito
             if clientes_dia_selecionados and not DF_CLIENTES.empty and "lat" in dados_promotor_atual:
                 df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
                 df_com_coord = df_atendidos.dropna(subset=["lat", "lon"])
@@ -473,11 +538,9 @@ for i, dia_nome in enumerate(dias_semana):
                         1
                     )
         else:
-            # Se for Férias, Carro Quebrado, Folga, Falta, etc., trava e não pede lojas
-            st.warning(f"⚠️ Dia registrado como **{sit_sel}**. Lançamento de lojas e roteirização desativados.")
+            st.markdown(f"<div style='color:#FDD818; padding:8px 0;'>⚠️ Dia registrado como <b>{sit_sel}</b>. Lojas desativadas.</div>", unsafe_allow_html=True)
             clientes_dia_selecionados = []
 
-        # Inputs de KM
         col_kmi, col_kmf = st.columns(2)
         with col_kmi:
             def_kmi = str_br_para_float(dados_dia_salvo.get("km_ini", km_fim_anterior))
@@ -499,7 +562,7 @@ for i, dia_nome in enumerate(dias_semana):
                 else:
                     def_kmf = def_kmi
             else:
-                def_kmf = km_ini  # Se não for dia normal, KM final é igual ao inicial (0 rodados)
+                def_kmf = km_ini
 
             km_fim_str = st.text_input(
                 f"KM Final ({dia_nome})", 
@@ -510,7 +573,7 @@ for i, dia_nome in enumerate(dias_semana):
             km_fim = str_br_para_float(km_fim_str)
 
         if dia_eh_normal and km_sugerido_circuito > 0.0 and not esta_finalizado:
-            st.info(f"💡 **Sugestão de trajeto:** ~{float_para_str_br(km_sugerido_circuito)} km (Circuito ida e volta). O valor é totalmente editável!")
+            st.markdown(f"<div style='color:#888; font-size:13px;'>💡 <b>Sugestão de rota:</b> ~{float_para_str_br(km_sugerido_circuito)} km (Ida e Volta). Editável livremente.</div>", unsafe_allow_html=True)
 
         km_dia = 0.0
         if dia_eh_normal and km_fim > 0.0:
@@ -519,22 +582,20 @@ for i, dia_nome in enumerate(dias_semana):
             else:
                 km_dia = km_fim - km_ini
                 km_fim_anterior = km_fim
-                st.caption(f"🚘 KM Rodado no dia: **{float_para_str_br(km_dia)} km**")
+                st.markdown(f"<span style='color:#FDD818; font-weight:bold;'>🚘 KM Rodado: {float_para_str_br(km_dia)} km</span>", unsafe_allow_html=True)
         elif not dia_eh_normal:
             km_fim_anterior = km_ini
 
         km_total_calculado += km_dia
 
-        # Mapa e endereços (somente se houver atendimento e dia for Normal)
         if dia_eh_normal and clientes_dia_selecionados and not df_atendidos.empty:
-            with st.expander(f"📍 Lojas Atendidas no Dia ({len(clientes_dia_selecionados)})", expanded=True):
+            with st.expander(f"📍 Lojas Selecionadas ({len(clientes_dia_selecionados)})", expanded=True):
                 for _, row in df_atendidos.iterrows():
                     st.markdown(f"• **{row['NOME']}**  \n  🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
 
             df_coords = df_atendidos.dropna(subset=["lat", "lon"]).copy()
 
             if not df_coords.empty and "lat" in dados_promotor_atual:
-                st.caption("🗺️ Circuito: Residência (Azul) ➔ Lojas Atendidas (Vermelho):")
                 lat_casa = dados_promotor_atual["lat"]
                 lon_casa = dados_promotor_atual["lon"]
 
@@ -542,7 +603,7 @@ for i, dia_nome in enumerate(dias_semana):
                     "ScatterplotLayer",
                     data=pd.DataFrame([{"lat": lat_casa, "lon": lon_casa}]),
                     get_position=["lon", "lat"],
-                    get_color=[0, 100, 255, 220],
+                    get_color=[0, 140, 255, 230],
                     get_radius=800,
                     pickable=True
                 )
@@ -551,7 +612,7 @@ for i, dia_nome in enumerate(dias_semana):
                     "ScatterplotLayer",
                     data=df_coords,
                     get_position=["lon", "lat"],
-                    get_color=[230, 40, 40, 220],
+                    get_color=[253, 216, 24, 230],  # Amarelo ouro nas paradas
                     get_radius=500,
                     pickable=True
                 )
@@ -570,12 +631,12 @@ for i, dia_nome in enumerate(dias_semana):
                     data=pd.DataFrame(linhas_circuito),
                     get_source_position="origem",
                     get_target_position="destino",
-                    get_color=[30, 30, 30, 180],
+                    get_color=[255, 255, 255, 160],  # Linhas brancas de alta visibilidade
                     get_width=3
                 )
 
                 viewport = pdk.ViewState(latitude=lat_casa, longitude=lon_casa, zoom=10, pitch=0)
-                st.pydeck_chart(pdk.Deck(layers=[camada_linhas, camada_casa, camada_lojas], initial_view_state=viewport, map_style="road"))
+                st.pydeck_chart(pdk.Deck(layers=[camada_linhas, camada_casa, camada_lojas], initial_view_state=viewport, map_style="dark"))
 
         detalhes_dias.append({
             "dia": dia_nome,
@@ -592,7 +653,7 @@ for i, dia_nome in enumerate(dias_semana):
 # GASTOS EXTRAS
 # ==============================================================================
 st.divider()
-st.markdown("### 💰 Gastos Extras da Semana")
+st.markdown("### 💰 GASTOS EXTRAS")
 
 gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
 qtd_gastos = max(1, len(gastos_salvos_default))
@@ -627,10 +688,10 @@ for idx in range(qtd_gastos):
         gastos_extras.append({"desc": g_desc.strip(), "valor": v_float})
 
 # ==============================================================================
-# RESUMO FINANCEIRO E ENVIO
+# RESUMO FINANCEIRO
 # ==============================================================================
 st.divider()
-st.markdown("### 📊 Fechamento da Semana")
+st.markdown("### 📊 FECHAMENTO DA SEMANA")
 
 VALOR_KM_TAXA = 1.17
 valor_total_km = km_total_calculado * VALOR_KM_TAXA
@@ -638,9 +699,9 @@ valor_extras_total = sum(g["valor"] for g in gastos_extras)
 valor_total_reembolso = valor_total_km + valor_extras_total
 
 c_km, c_ext, c_tot = st.columns(3)
-c_km.metric("Reembolso KM", f"R$ {float_para_str_br(valor_total_km)}", help=f"{float_para_str_br(km_total_calculado)} km x R$ 1,17")
-c_ext.metric("Gastos Extras", f"R$ {float_para_str_br(valor_extras_total)}")
-c_tot.metric("Total a Receber", f"R$ {float_para_str_br(valor_total_reembolso)}")
+c_km.metric("REEMBOLSO KM", f"R$ {float_para_str_br(valor_total_km)}")
+c_ext.metric("GASTOS EXTRAS", f"R$ {float_para_str_br(valor_extras_total)}")
+c_tot.metric("TOTAL A RECEBER", f"R$ {float_para_str_br(valor_total_reembolso)}")
 
 def construir_payload(status_envio):
     return {
@@ -662,7 +723,7 @@ if not esta_finalizado:
     col_btn1, col_btn2 = st.columns(2)
 
     with col_btn1:
-        if st.button("💾 Salvar Rascunho"):
+        if st.button("SALVAR RASCUNHO 💾"):
             payload = construir_payload("RASCUNHO")
             sucesso = salvar_dados_github(
                 caminho_github, 
@@ -671,11 +732,11 @@ if not esta_finalizado:
                 mensagem_commit=f"Rascunho S{num_semana} - {promotor_sel}"
             )
             if sucesso:
-                st.success("Rascunho salvo com sucesso! Você pode continuar editando.")
+                st.success("Rascunho salvo com sucesso!")
                 st.rerun()
 
     with col_btn2:
-        if st.button("🚀 Finalizar Semana", type="primary"):
+        if st.button("FINALIZAR SEMANA 🚀", type="primary"):
             payload = construir_payload("FINALIZADO")
             sucesso = salvar_dados_github(
                 caminho_github, 
@@ -685,7 +746,7 @@ if not esta_finalizado:
             )
             if sucesso:
                 st.balloons()
-                st.success("Semana FINALIZADA com sucesso! Os campos foram bloqueados.")
+                st.success("Semana finalizada e bloqueada com sucesso!")
                 st.rerun()
 else:
-    st.info("ℹ️ Para realizar qualquer edição nesta semana, clique no botão **'🔓 Reabrir Semana para Correção'** no topo da página.")
+    st.info("ℹ️ Para realizar qualquer edição, clique em '🔓 REABRIR PARA CORREÇÃO' no topo da tela.")
