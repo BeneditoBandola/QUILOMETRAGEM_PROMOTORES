@@ -24,24 +24,51 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# CONFIGURAÇÕES E CARREGAMENTO DINÂMICO DA PLANILHA
+# CADASTRO DE PROMOTORES E CONFIGURAÇÕES
 # ==============================================================================
 PROMOTORES = [
+    "Carolina Rodrigues Bruno",
     "Fernanda Dias Ferreira",
-    "João Silva",
-    "Maria Souza",
-    "Carlos Oliveira"
+    "Madalla Teixeira Reis",
+    "Pamela Camila de Almeida Alexandrino",
+    "Rodrigo Luis Adao",
+    "Saruete Valeska Stabile de Oliveira"
 ]
 
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
 NOME_ARQUIVO_PLANILHA = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
 
+# ==============================================================================
+# TELA DE IDENTIFICAÇÃO (QUEM É VOCÊ?)
+# ==============================================================================
+if "usuario_ativo" not in st.session_state:
+    st.session_state.usuario_ativo = None
+
+if not st.session_state.usuario_ativo:
+    st.markdown("### 👤 Identificação")
+    st.markdown("#### QUEM É VOCÊ?")
+    
+    escolha_promotor = st.selectbox(
+        "Selecione o seu nome na lista para continuar:",
+        options=["-- Selecione seu nome --"] + PROMOTORES
+    )
+    
+    if st.button("Acessar Sistema 🚀", type="primary"):
+        if escolha_promotor != "-- Selecione seu nome --":
+            st.session_state.usuario_ativo = escolha_promotor
+            st.rerun()
+        else:
+            st.warning("Por favor, selecione seu nome na lista antes de prosseguir.")
+    st.stop()
+
+# ==============================================================================
+# CARREGAMENTO DA BASE DE CLIENTES
+# ==============================================================================
 @st.cache_data(ttl=3600)
 def carregar_base_clientes():
     caminho = NOME_ARQUIVO_PLANILHA
     arquivos_excel = glob.glob("*.xlsx")
     
-    # Se o nome exato não bater (devido a encoding do Linux/GitHub), busca qualquer arquivo de clientes
     if caminho not in arquivos_excel and arquivos_excel:
         for arq in arquivos_excel:
             if "clientes" in arq.lower():
@@ -54,7 +81,6 @@ def carregar_base_clientes():
         df = pd.read_excel(caminho, sheet_name=0)
         df = df.dropna(subset=["CÓDIGO", "NOME"]).copy()
         
-        # Limpeza e padronização dos campos
         df["CÓDIGO"] = df["CÓDIGO"].astype(int).astype(str).str.strip()
         df["NOME"] = df["NOME"].astype(str).str.strip()
         df["CIDADE"] = df["CIDADE"].fillna("NÃO INFORMADA").astype(str).str.strip().str.upper()
@@ -62,7 +88,6 @@ def carregar_base_clientes():
         df["ENDEREÇO"] = df["ENDEREÇO"].fillna("").astype(str).str.strip()
         df["UF"] = df["UF"].fillna("").astype(str).str.strip()
 
-        # Conversão de coordenadas (vírgula para ponto)
         def sanitizar_coord(val):
             try:
                 if pd.isna(val):
@@ -75,7 +100,7 @@ def carregar_base_clientes():
         df["lon"] = df["LONGITUDE"].apply(sanitizar_coord)
         return df
     except Exception as e:
-        st.error(f"Erro ao carregar a planilha '{caminho}': {e}")
+        st.error(f"Erro ao carregar a base de clientes: {e}")
         return pd.DataFrame()
 
 DF_CLIENTES = carregar_base_clientes()
@@ -89,7 +114,7 @@ if not DF_CLIENTES.empty:
         MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']}{bairro_str}{cidade_str}"
 
 # ==============================================================================
-# INTEGRAÇÃO COM A API DO GITHUB
+# INTEGRAÇÃO COM GITHUB
 # ==============================================================================
 def get_github_credentials():
     try:
@@ -167,18 +192,23 @@ def converter_float(val):
         return 0.0
 
 # ==============================================================================
-# INTERFACE PRINCIPAL
+# CABEÇALHO DO APLICATIVO
 # ==============================================================================
-st.title("🚗 Controle de KM")
-st.subheader("Minassal - Lançamento Semanal")
+promotor_sel = st.session_state.usuario_ativo
 
-col1, col2 = st.columns([2, 1])
-with col1:
-    promotor_sel = st.selectbox("Promotor(a):", PROMOTORES)
+col_tit, col_sair = st.columns([3, 1])
+with col_tit:
+    st.title("🚗 Controle de KM")
+with col_sair:
+    st.write("")
+    if st.button("Trocar Usuário 🔄"):
+        st.session_state.usuario_ativo = None
+        st.rerun()
+
+st.caption(f"👤 Conectado como: **{promotor_sel}**")
 
 semana_atual_default = int(datetime.now().isocalendar()[1])
-with col2:
-    num_semana = st.number_input("Nº Semana:", min_value=1, max_value=53, value=semana_atual_default)
+num_semana = st.number_input("Nº da Semana de Trabalho:", min_value=1, max_value=53, value=semana_atual_default)
 
 segunda, domingo = calcular_intervalo_semana(num_semana)
 intervalo_str = f"{segunda.strftime('%d/%m')} a {domingo.strftime('%d/%m')}"
@@ -191,12 +221,15 @@ dados_salvos, sha_arquivo = carregar_dados_github(caminho_github)
 
 if dados_salvos:
     if dados_salvos.get("status") == "FINALIZADO":
-        st.success("✅ Esta semana já foi FINALIZADA pelo promotor.")
+        st.success("✅ Esta semana já foi FINALIZADA por você.")
     else:
         st.warning("📝 Rascunho salvo anteriormente carregado!")
 
 st.divider()
 
+# ==============================================================================
+# REGISTROS DIÁRIOS
+# ==============================================================================
 dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 detalhes_dias = []
 km_total_calculado = 0.0
@@ -243,7 +276,7 @@ for i, dia_nome in enumerate(dias_semana):
 
         km_total_calculado += km_dia
 
-        # --- SELEÇÃO DE CLIENTES FILTRADA POR CIDADE ---
+        # --- SELEÇÃO DE CLIENTES (CIDADE + MULTISELECT) ---
         cidade_sel = st.selectbox(
             f"Filtrar por Cidade ({dia_nome}):",
             options=["TODAS"] + LISTA_CIDADES,
@@ -317,7 +350,7 @@ for idx in range(qtd_gastos):
         gastos_extras.append({"desc": g_desc.strip(), "valor": g_val, "informativo": g_inf})
 
 # ==============================================================================
-# RESUMO E AÇÕES
+# RESUMO E SUBMISSÃO
 # ==============================================================================
 st.divider()
 VALOR_KM_TAXA = 1.17
