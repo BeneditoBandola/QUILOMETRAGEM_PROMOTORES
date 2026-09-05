@@ -86,10 +86,44 @@ PROMOTORES = list(DADOS_PROMOTORES.keys())
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
 NOME_ARQUIVO_PLANILHA = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
 
+# ==============================================================================
+# AUXILIARES DE FORMATAÇÃO E PADRÃO MONETÁRIO BRASILEIRO (VÍRGULA)
+# ==============================================================================
 def normalizar_texto(txt):
     if not txt:
         return ""
     return unicodedata.normalize('NFKD', str(txt)).encode('ASCII', 'ignore').decode('utf-8').strip().upper()
+
+def str_br_para_float(val):
+    """Converte texto em formato brasileiro (ex: '25,50' ou '1.250,50') para float."""
+    if not val:
+        return 0.0
+    s = str(val).strip().replace("R$", "").strip()
+    if not s:
+        return 0.0
+    # Se contiver vírgula, remove ponto de milhar e troca vírgula por ponto decimal
+    if "," in s:
+        s = s.replace(".", "").replace(",", ".")
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return 0.0
+
+def float_para_str_br(val):
+    """Converte float para formato monetário brasileiro com vírgula (ex: 25.5 -> '25,50')."""
+    try:
+        return f"{float(val):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (ValueError, TypeError):
+        return "0,00"
+
+def calcular_intervalo_semana(num_semana, ano=None):
+    if ano is None:
+        ano = datetime.now().year
+    start = datetime(ano, 1, 1)
+    start -= timedelta(days=start.weekday())
+    segunda = start + timedelta(weeks=num_semana - 1)
+    domingo = segunda + timedelta(days=6)
+    return segunda, domingo
 
 # ==============================================================================
 # TELA DE IDENTIFICAÇÃO (QUEM É VOCÊ?)
@@ -166,7 +200,6 @@ if not DF_CLIENTES.empty:
         cidade_str = f" ({r['CIDADE_RAW']}/{r['UF']})" if r['CIDADE_RAW'] else ""
         MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']}{bairro_str}{cidade_str}"
 
-# Dados do promotor logado
 usuario_logado = st.session_state.usuario_ativo
 dados_promotor_atual = DADOS_PROMOTORES.get(usuario_logado, {})
 cidades_definidas = dados_promotor_atual.get("cidades", [])
@@ -242,24 +275,6 @@ def salvar_dados_github(caminho_arquivo, dados_dict, sha_existente=None, mensage
         return False
 
 # ==============================================================================
-# AUXILIARES
-# ==============================================================================
-def calcular_intervalo_semana(num_semana, ano=None):
-    if ano is None:
-        ano = datetime.now().year
-    start = datetime(ano, 1, 1)
-    start -= timedelta(days=start.weekday())
-    segunda = start + timedelta(weeks=num_semana - 1)
-    domingo = segunda + timedelta(days=6)
-    return segunda, domingo
-
-def converter_float(val):
-    try:
-        return float(str(val).replace(',', '.').strip())
-    except (ValueError, TypeError):
-        return 0.0
-
-# ==============================================================================
 # CABEÇALHO DO APLICATIVO
 # ==============================================================================
 promotor_sel = st.session_state.usuario_ativo
@@ -327,12 +342,14 @@ for i, dia_nome in enumerate(dias_semana):
 
         col_kmi, col_kmf = st.columns(2)
         with col_kmi:
-            def_kmi = converter_float(dados_dia_salvo.get("km_ini", km_fim_anterior))
-            km_ini = st.number_input(f"KM Inicial ({dia_nome})", min_value=0.0, value=def_kmi, step=1.0, key=f"kmi_{dia_nome}")
+            def_kmi = str_br_para_float(dados_dia_salvo.get("km_ini", km_fim_anterior))
+            km_ini_str = st.text_input(f"KM Inicial ({dia_nome})", value=float_para_str_br(def_kmi).replace(",00", ""), key=f"kmi_{dia_nome}")
+            km_ini = str_br_para_float(km_ini_str)
 
         with col_kmf:
-            def_kmf = converter_float(dados_dia_salvo.get("km_fim", def_kmi))
-            km_fim = st.number_input(f"KM Final ({dia_nome})", min_value=0.0, value=def_kmf, step=1.0, key=f"kmf_{dia_nome}")
+            def_kmf = str_br_para_float(dados_dia_salvo.get("km_fim", def_kmi))
+            km_fim_str = st.text_input(f"KM Final ({dia_nome})", value=float_para_str_br(def_kmf).replace(",00", ""), key=f"kmf_{dia_nome}")
+            km_fim = str_br_para_float(km_fim_str)
 
         km_dia = 0.0
         if km_fim > 0.0:
@@ -341,16 +358,12 @@ for i, dia_nome in enumerate(dias_semana):
             else:
                 km_dia = km_fim - km_ini
                 km_fim_anterior = km_fim
-                st.caption(f"🚘 KM Rodado no dia: **{km_dia:.1f} km**")
+                st.caption(f"🚘 KM Rodado no dia: **{float_para_str_br(km_dia)} km**")
 
         km_total_calculado += km_dia
 
-        # ==============================================================================
-        # SUBMENU DE LOJAS POR CIDADE
-        # ==============================================================================
+        # Submenu por Cidade
         st.markdown("#### 🏬 Selecionar Lojas por Cidade")
-        st.caption("Abra a cidade desejada abaixo para escolher as lojas atendidas:")
-
         cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
         clientes_dia_selecionados = []
 
@@ -374,7 +387,7 @@ for i, dia_nome in enumerate(dias_semana):
                     )
                     clientes_dia_selecionados.extend(escolhidos_cid)
 
-            # Opção de busca em cidade fora da rota
+            # Cidade fora da rota usual
             with st.expander("🌐 Outra Cidade / Fora da Rota Usual", expanded=False):
                 cidades_fora = [c for c in todas_cidades_norm if c not in cidades_disponiveis_promotor]
                 cid_extra = st.selectbox(f"Escolha a cidade fora da rota ({dia_nome}):", ["-- Selecione --"] + cidades_fora, key=f"extra_cid_{dia_nome}")
@@ -393,9 +406,7 @@ for i, dia_nome in enumerate(dias_semana):
 
         clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
 
-        # ==============================================================================
-        # MAPA INTERATIVO: LIGA A CASA DO PROMOTOR ÀS LOJAS ATENDIDAS
-        # ==============================================================================
+        # Mapa com linha ligando casa às lojas
         if clientes_dia_selecionados and not DF_CLIENTES.empty:
             df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
 
@@ -407,66 +418,39 @@ for i, dia_nome in enumerate(dias_semana):
 
             if not df_coords.empty and "lat" in dados_promotor_atual:
                 st.caption("🗺️ Rota: Casa do Promotor (Azul) ➔ Lojas Atendidas (Vermelho):")
-                
                 lat_casa = dados_promotor_atual["lat"]
                 lon_casa = dados_promotor_atual["lon"]
 
-                # Camada 1: Ponto da Casa do Promotor (Azul)
-                ponto_casa = pd.DataFrame([{
-                    "nome": f"Casa: {promotor_sel}",
-                    "lat": lat_casa,
-                    "lon": lon_casa
-                }])
                 camada_casa = pdk.Layer(
                     "ScatterplotLayer",
-                    data=ponto_casa,
+                    data=pd.DataFrame([{"lat": lat_casa, "lon": lon_casa}]),
                     get_position=["lon", "lat"],
-                    get_color=[0, 100, 255, 200],  # Azul
+                    get_color=[0, 100, 255, 200],
                     get_radius=800,
                     pickable=True
                 )
 
-                # Camada 2: Pontos das Lojas Atendidas (Vermelho)
                 camada_lojas = pdk.Layer(
                     "ScatterplotLayer",
                     data=df_coords,
                     get_position=["lon", "lat"],
-                    get_color=[230, 40, 40, 200],  # Vermelho
+                    get_color=[230, 40, 40, 200],
                     get_radius=500,
                     pickable=True
                 )
 
-                # Camada 3: Linhas conectando Casa ➔ Lojas
-                linhas_rotas = []
-                for _, r in df_coords.iterrows():
-                    linhas_rotas.append({
-                        "origem": [lon_casa, lat_casa],
-                        "destino": [r["lon"], r["lat"]]
-                    })
-                df_linhas = pd.DataFrame(linhas_rotas)
-
+                linhas_rotas = [{"origem": [lon_casa, lat_casa], "destino": [r["lon"], r["lat"]]} for _, r in df_coords.iterrows()]
                 camada_linhas = pdk.Layer(
                     "LineLayer",
-                    data=df_linhas,
+                    data=pd.DataFrame(linhas_rotas),
                     get_source_position="origem",
                     get_target_position="destino",
-                    get_color=[30, 30, 30, 160],  # Linha escura semi-transparente
+                    get_color=[30, 30, 30, 160],
                     get_width=3
                 )
 
-                # Configuração da visualização centrada
-                viewport = pdk.ViewState(
-                    latitude=lat_casa,
-                    longitude=lon_casa,
-                    zoom=10,
-                    pitch=0
-                )
-
-                st.pydeck_chart(pdk.Deck(
-                    layers=[camada_linhas, camada_casa, camada_lojas],
-                    initial_view_state=viewport,
-                    map_style="road"
-                ))
+                viewport = pdk.ViewState(latitude=lat_casa, longitude=lon_casa, zoom=10, pitch=0)
+                st.pydeck_chart(pdk.Deck(layers=[camada_linhas, camada_casa, camada_lojas], initial_view_state=viewport, map_style="road"))
 
         detalhes_dias.append({
             "dia": dia_nome,
@@ -480,11 +464,11 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS (TODOS SOMAM DIRETAMENTE NO REEMBOLSO)
+# GASTOS EXTRAS (DIGITAÇÃO COM VÍRGULA PADRÃO BRASIL)
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 Gastos Extras da Semana")
-st.caption("Adicione aqui despesas de viagem (alimentação, estacionamento, pedágio, etc.).")
+st.caption("Digite o valor utilizando **vírgula** (Exemplo: `25,50` ou `150,00`).")
 
 gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
 qtd_gastos = max(1, len(gastos_salvos_default))
@@ -495,16 +479,30 @@ for idx in range(qtd_gastos):
     col_desc, col_val = st.columns([3, 2])
     
     with col_desc:
-        g_desc = st.text_input(f"Despesa #{idx+1}", value=g_item.get("desc", ""), placeholder="Ex: Estacionamento, Refeição...", key=f"gdesc_{idx}")
+        g_desc = st.text_input(
+            f"Despesa #{idx+1}", 
+            value=g_item.get("desc", ""), 
+            placeholder="Ex: Estacionamento, Refeição...", 
+            key=f"gdesc_{idx}"
+        )
     with col_val:
-        v_salvo = converter_float(g_item.get("valor", 0.0))
-        g_val = st.number_input(f"Valor R$ #{idx+1}", min_value=0.0, value=v_salvo, step=1.0, key=f"gval_{idx}")
+        # Preenche com valor salvo formatado com vírgula
+        v_salvo_num = g_item.get("valor", 0.0)
+        v_salvo_txt = float_para_str_br(v_salvo_num) if v_salvo_num > 0 else ""
+        
+        g_val_txt = st.text_input(
+            f"Valor R$ #{idx+1}", 
+            value=v_salvo_txt, 
+            placeholder="0,00", 
+            key=f"gval_{idx}"
+        )
+        v_float = str_br_para_float(g_val_txt)
 
-    if g_desc.strip():
-        gastos_extras.append({"desc": g_desc.strip(), "valor": g_val})
+    if g_desc.strip() and v_float > 0:
+        gastos_extras.append({"desc": g_desc.strip(), "valor": v_float})
 
 # ==============================================================================
-# RESUMO FINANCEIRO E FINALIZAÇÃO
+# RESUMO FINANCEIRO (FORMATADO NO PADRÃO R$ COM VÍRGULA)
 # ==============================================================================
 st.divider()
 st.markdown("### 📊 Fechamento da Semana")
@@ -515,9 +513,9 @@ valor_extras_total = sum(g["valor"] for g in gastos_extras)
 valor_total_reembolso = valor_total_km + valor_extras_total
 
 c_km, c_ext, c_tot = st.columns(3)
-c_km.metric("Reembolso KM", f"R$ {valor_total_km:.2f}", help=f"{km_total_calculado:.1f} km x R$ {VALOR_KM_TAXA}")
-c_ext.metric("Gastos Extras", f"R$ {valor_extras_total:.2f}")
-c_tot.metric("Total a Receber", f"R$ {valor_total_reembolso:.2f}")
+c_km.metric("Reembolso KM", f"R$ {float_para_str_br(valor_total_km)}", help=f"{float_para_str_br(km_total_calculado)} km x R$ 1,17")
+c_ext.metric("Gastos Extras", f"R$ {float_para_str_br(valor_extras_total)}")
+c_tot.metric("Total a Receber", f"R$ {float_para_str_br(valor_total_reembolso)}")
 
 def construir_payload(status_envio):
     return {
