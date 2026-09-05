@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import json
 import base64
+import glob
 from datetime import datetime, timedelta
 
 # ==============================================================================
@@ -23,7 +24,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# CONFIGURAÇÕES E CARREGAMENTO DA PLANILHA EXATA
+# CONFIGURAÇÕES E CARREGAMENTO DINÂMICO DA PLANILHA
 # ==============================================================================
 PROMOTORES = [
     "Fernanda Dias Ferreira",
@@ -33,14 +34,24 @@ PROMOTORES = [
 ]
 
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
-
-# Nome exato da planilha que está no GitHub
-NOME_ARQUIVO_PLANILHA = "Cópia de clientes com cnpj corretinho novinho (1)_2.xlsx"
+NOME_ARQUIVO_PLANILHA = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
 
 @st.cache_data(ttl=3600)
 def carregar_base_clientes():
+    caminho = NOME_ARQUIVO_PLANILHA
+    arquivos_excel = glob.glob("*.xlsx")
+    
+    # Se o nome exato não bater (devido a encoding do Linux/GitHub), busca qualquer arquivo de clientes
+    if caminho not in arquivos_excel and arquivos_excel:
+        for arq in arquivos_excel:
+            if "clientes" in arq.lower():
+                caminho = arq
+                break
+        else:
+            caminho = arquivos_excel[0]
+
     try:
-        df = pd.read_excel(NOME_ARQUIVO_PLANILHA, sheet_name="Book1")
+        df = pd.read_excel(caminho, sheet_name=0)
         df = df.dropna(subset=["CÓDIGO", "NOME"]).copy()
         
         # Limpeza e padronização dos campos
@@ -51,7 +62,7 @@ def carregar_base_clientes():
         df["ENDEREÇO"] = df["ENDEREÇO"].fillna("").astype(str).str.strip()
         df["UF"] = df["UF"].fillna("").astype(str).str.strip()
 
-        # Conversão das coordenadas geográficas (vírgula para ponto)
+        # Conversão de coordenadas (vírgula para ponto)
         def sanitizar_coord(val):
             try:
                 if pd.isna(val):
@@ -64,7 +75,7 @@ def carregar_base_clientes():
         df["lon"] = df["LONGITUDE"].apply(sanitizar_coord)
         return df
     except Exception as e:
-        st.error(f"Erro ao carregar '{NOME_ARQUIVO_PLANILHA}': {e}")
+        st.error(f"Erro ao carregar a planilha '{caminho}': {e}")
         return pd.DataFrame()
 
 DF_CLIENTES = carregar_base_clientes()
@@ -134,11 +145,11 @@ def salvar_dados_github(caminho_arquivo, dados_dict, sha_existente=None, mensage
         response = requests.put(url, headers=headers, json=payload, timeout=10)
         return response.status_code in [200, 201]
     except requests.RequestException as e:
-        st.error(f"Erro de conexão com o GitHub: {e}")
+        st.error(f"Erro ao salvar dados no GitHub: {e}")
         return False
 
 # ==============================================================================
-# FUNÇÕES AUXILIARES
+# AUXILIARES
 # ==============================================================================
 def calcular_intervalo_semana(num_semana, ano=None):
     if ano is None:
@@ -256,7 +267,7 @@ for i, dia_nome in enumerate(dias_semana):
             key=f"cli_{dia_nome}"
         )
 
-        # --- ENDEREÇOS E MAPA DO DIA ---
+        # --- EXIBIÇÃO DE ENDEREÇOS E MAPA DO DIA ---
         if clientes_sel and not DF_CLIENTES.empty:
             df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_sel)]
 
