@@ -3,6 +3,7 @@ import pandas as pd
 import requests
 import json
 import base64
+import os
 import glob
 import unicodedata
 import pydeck as pdk
@@ -86,10 +87,9 @@ PROMOTORES = list(DADOS_PROMOTORES.keys())
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
 
 NOME_PLANILHA_CLIENTES = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
-NOME_PLANILHA_VENDAS = "cubo_de_vendas_05_09_2026_13_31_05.xlsx"
 
 # ==============================================================================
-# AUXILIARES DE FORMATAÇÃO
+# AUXILIARES DE FORMATAÇÃO E TEXTO
 # ==============================================================================
 def normalizar_texto(txt):
     if not txt:
@@ -150,10 +150,12 @@ if not st.session_state.usuario_ativo:
 # ==============================================================================
 # CARREGAMENTO DA BASE CRUZADA (FILTRADA E ORDENADA POR COMPRAS, SEM VALOR NA TELA)
 # ==============================================================================
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=1800)
 def carregar_base_cruzada():
-    caminho_cli = NOME_PLANILHA_CLIENTES
     arqs = glob.glob("*.xlsx")
+
+    # 1. Localiza a planilha cadastral de clientes
+    caminho_cli = NOME_PLANILHA_CLIENTES
     if caminho_cli not in arqs and arqs:
         for a in arqs:
             if "clientes" in a.lower():
@@ -187,33 +189,33 @@ def carregar_base_cruzada():
         st.error(f"Erro ao carregar cadastro de clientes: {e}")
         return pd.DataFrame()
 
-    # Leitura do Cubo de Vendas para filtrar quem comprou e ordenar
-    caminho_vendas = NOME_PLANILHA_VENDAS
-    if caminho_vendas not in arqs and arqs:
-        for a in arqs:
-            if "cubo" in a.lower() or "vendas" in a.lower():
-                caminho_vendas = a
-                break
+    # 2. Localiza o cubo de vendas mais recente no repositório
+    candidatos_cubo = [a for a in arqs if "cubo" in a.lower() or "vendas" in a.lower()]
+    
+    if not candidatos_cubo:
+        return df_cli
+
+    caminho_vendas = max(candidatos_cubo, key=os.path.getmtime)
 
     try:
         df_vendas = pd.read_excel(caminho_vendas, sheet_name=0)
         df_vendas = df_vendas.dropna(subset=["CLIENTE CODIGO", "TOTAL VALOR"]).copy()
         df_vendas["CLIENTE CODIGO"] = df_vendas["CLIENTE CODIGO"].astype(int).astype(str).str.strip()
         
-        # Filtra apenas clientes com valor positivo no ano
+        # Filtra apenas quem comprou este ano (TOTAL VALOR > 0)
         df_vendas = df_vendas[df_vendas["TOTAL VALOR"] > 0]
         vendas_resumo = df_vendas.groupby("CLIENTE CODIGO")["TOTAL VALOR"].sum().reset_index()
     except Exception:
         return df_cli
 
-    # Junta e ordena por maior valor de compras sem exibir o valor ao usuário
+    # 3. Faz o merge interno e ordena pelo maior comprador (sem exibir o valor na tela)
     df_merged = pd.merge(df_cli, vendas_resumo, left_on="CÓDIGO", right_on="CLIENTE CODIGO", how="inner")
     df_merged = df_merged.sort_values(by="TOTAL VALOR", ascending=False)
     return df_merged
 
 DF_CLIENTES = carregar_base_cruzada()
 
-# Rótulo limpo: Apenas Nome, Bairro e Cidade (sem valores de compra)
+# Rótulo amigável: Apenas Nome, Bairro e Cidade/UF
 MAPA_GERAL_NOMES = {}
 if not DF_CLIENTES.empty:
     for _, r in DF_CLIENTES.iterrows():
@@ -236,7 +238,7 @@ else:
     cidades_disponiveis_promotor = []
 
 # ==============================================================================
-# INTEGRAÇÃO COM GITHUB
+# INTEGRAÇÃO COM A API DO GITHUB
 # ==============================================================================
 def get_github_credentials():
     try:
@@ -383,7 +385,7 @@ for i, dia_nome in enumerate(dias_semana):
 
         km_total_calculado += km_dia
 
-        # Submenu por Cidade (Lojas compradoras ordenadas internamente por volume)
+        # Submenu por Cidade: lojas compradoras ordenadas internamente pelo volume
         st.markdown("#### 🏬 Selecionar Lojas por Cidade")
         cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
         clientes_dia_selecionados = []
@@ -395,7 +397,6 @@ for i, dia_nome in enumerate(dias_semana):
                     continue
                 
                 nome_cidade_exibicao = df_cidade["CIDADE_RAW"].iloc[0]
-                # A lista de códigos já está ordenada pelo volume de compras
                 codigos_da_cidade = df_cidade["CÓDIGO"].tolist()
                 defaults_cidade = [c for c in cods_salvos_dia if c in codigos_da_cidade]
 
@@ -428,7 +429,7 @@ for i, dia_nome in enumerate(dias_semana):
 
         clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
 
-        # Mapa: Linha ligando a residência às lojas atendidas
+        # Mapa com linha interligando a residência às lojas visitadas
         if clientes_dia_selecionados and not DF_CLIENTES.empty:
             df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
 
@@ -486,7 +487,7 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS (DIGITAÇÃO COM VÍRGULA PADRÃO BRASIL)
+# GASTOS EXTRAS (COM VÍRGULA PADRÃO BRASIL)
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 Gastos Extras da Semana")
