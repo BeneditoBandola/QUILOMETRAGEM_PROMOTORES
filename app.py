@@ -21,11 +21,12 @@ st.markdown("""
     <style>
     .main { padding: 10px; }
     .stButton>button { width: 100%; border-radius: 8px; font-weight: bold; }
+    div[data-testid="stExpander"] div[role="button"] p { font-weight: bold; }
     </style>
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# CADASTRO DE PROMOTORES E SUAS CIDADES
+# CADASTRO DE PROMOTORES E SUAS CIDADES DA ROTA
 # ==============================================================================
 PROMOTORES = [
     "Pamela Camila de Almeida Alexandrino",
@@ -132,6 +133,7 @@ def carregar_base_clientes():
 
 DF_CLIENTES = carregar_base_clientes()
 
+# Rótulo de visualização para cada cliente
 MAPA_GERAL_NOMES = {}
 if not DF_CLIENTES.empty:
     for _, r in DF_CLIENTES.iterrows():
@@ -139,7 +141,7 @@ if not DF_CLIENTES.empty:
         cidade_str = f" ({r['CIDADE_RAW']}/{r['UF']})" if r['CIDADE_RAW'] else ""
         MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']}{bairro_str}{cidade_str}"
 
-# Determina as cidades permitidas para o promotor logado
+# Identifica as cidades vinculadas ao promotor logado
 usuario_logado = st.session_state.usuario_ativo
 cidades_definidas = CIDADES_POR_PROMOTOR.get(usuario_logado, [])
 cidades_norm_promotor = [normalizar_texto(c) for c in cidades_definidas]
@@ -268,7 +270,7 @@ if dados_salvos:
 st.divider()
 
 # ==============================================================================
-# REGISTROS DIÁRIOS
+# REGISTROS DIÁRIOS COM SUBMENU POR CIDADE
 # ==============================================================================
 dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 detalhes_dias = []
@@ -316,50 +318,70 @@ for i, dia_nome in enumerate(dias_semana):
 
         km_total_calculado += km_dia
 
-        # --- OPÇÕES DE CIDADES CUSTOMIZADAS POR PROMOTOR ---
-        opcoes_cidades = ["TODAS DA MINHA ROTA"] + cidades_disponiveis_promotor + ["OUTRAS CIDADES..."]
-        cidade_sel = st.selectbox(
-            f"Cidade de Atendimento ({dia_nome}):",
-            options=opcoes_cidades,
-            key=f"cid_{dia_nome}"
-        )
+        # ==============================================================================
+        # SUBMENU DE LOJAS POR CIDADE
+        # ==============================================================================
+        st.markdown("#### 🏬 Selecionar Lojas por Cidade")
+        st.caption("Abra a cidade desejada abaixo para escolher as lojas atendidas:")
+
+        cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
+        clientes_dia_selecionados = []
 
         if not DF_CLIENTES.empty:
-            if cidade_sel == "TODAS DA MINHA ROTA":
-                if cidades_disponiveis_promotor:
-                    df_opcoes = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"].isin(cidades_disponiveis_promotor)]
-                else:
-                    df_opcoes = DF_CLIENTES
-            elif cidade_sel == "OUTRAS CIDADES...":
-                df_opcoes = DF_CLIENTES
-            else:
-                df_opcoes = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cidade_sel]
-        else:
-            df_opcoes = pd.DataFrame()
+            for cid_norm in cidades_disponiveis_promotor:
+                # Localiza clientes daquela cidade
+                df_cidade = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_norm]
+                if df_cidade.empty:
+                    continue
+                
+                nome_cidade_exibicao = df_cidade["CIDADE_RAW"].iloc[0]
+                codigos_da_cidade = df_cidade["CÓDIGO"].tolist()
+                
+                # Preenche com os códigos que já estavam salvos para esta cidade
+                defaults_cidade = [c for c in cods_salvos_dia if c in codigos_da_cidade]
 
-        opcoes_cods = df_opcoes["CÓDIGO"].tolist() if not df_opcoes.empty else []
-        cods_salvos = [str(c) for c in dados_dia_salvo.get("clientes", [])]
-        opcoes_finais = list(dict.fromkeys(cods_salvos + opcoes_cods))
+                # Submenu sanfona por cidade
+                with st.expander(f"🏙️ {nome_cidade_exibicao} ({len(df_cidade)} lojas)", expanded=bool(defaults_cidade)):
+                    escolhidos_cid = st.multiselect(
+                        f"Lojas em {nome_cidade_exibicao}:",
+                        options=codigos_da_cidade,
+                        default=defaults_cidade,
+                        format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
+                        key=f"cli_{dia_nome}_{cid_norm}"
+                    )
+                    clientes_dia_selecionados.extend(escolhidos_cid)
 
-        clientes_sel = st.multiselect(
-            f"Lojas Atendidas ({dia_nome}):",
-            options=opcoes_finais,
-            default=cods_salvos,
-            format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
-            key=f"cli_{dia_nome}"
-        )
+            # Opção para selecionar fora da rota usual caso necessário
+            with st.expander("🌐 Outra Cidade / Fora da Rota Usual", expanded=False):
+                cidades_fora = [c for c in todas_cidades_norm if c not in cidades_disponiveis_promotor]
+                cid_extra = st.selectbox(f"Escolha a cidade fora da rota ({dia_nome}):", ["-- Selecione --"] + cidades_fora, key=f"extra_cid_{dia_nome}")
+                if cid_extra != "-- Selecione --":
+                    df_extra = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_extra]
+                    cods_extra = df_extra["CÓDIGO"].tolist()
+                    defaults_extra = [c for c in cods_salvos_dia if c in cods_extra]
+                    escolhidos_extra = st.multiselect(
+                        f"Lojas em {cid_extra}:",
+                        options=cods_extra,
+                        default=defaults_extra,
+                        format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
+                        key=f"cli_extra_{dia_nome}"
+                    )
+                    clientes_dia_selecionados.extend(escolhidos_extra)
 
-        # --- EXIBIÇÃO DOS LOCAIS E MAPA DO DIA ---
-        if clientes_sel and not DF_CLIENTES.empty:
-            df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_sel)]
+        # Garante a lista sem duplicidades
+        clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
 
-            with st.expander(f"📍 Endereços Visitados ({len(clientes_sel)})"):
+        # --- EXIBIÇÃO RESUMIDA DAS LOJAS SELECIONADAS E MAPA ---
+        if clientes_dia_selecionados and not DF_CLIENTES.empty:
+            df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
+
+            with st.expander(f"📍 Lojas Selecionadas no Dia ({len(clientes_dia_selecionados)})", expanded=True):
                 for _, row in df_atendidos.iterrows():
                     st.markdown(f"**{row['NOME']}**  \n🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
 
             df_mapa = df_atendidos.dropna(subset=["lat", "lon"])
             if not df_mapa.empty:
-                st.caption("🗺️ Locais das Lojas Atendidas:")
+                st.caption("🗺️ Rota no Mapa:")
                 st.map(df_mapa[["lat", "lon"]], zoom=11)
 
         detalhes_dias.append({
@@ -367,17 +389,18 @@ for i, dia_nome in enumerate(dias_semana):
             "data": data_dia,
             "km": km_dia,
             "sit": sit_sel,
-            "clientes": clientes_sel,
+            "clientes": clientes_dia_selecionados,
             "leitura": lei_sel,
             "km_ini": km_ini,
             "km_fim": km_fim
         })
 
 # ==============================================================================
-# GASTOS EXTRAS
+# GASTOS EXTRAS (REEMBOLSÁVEIS E INFORMATIVOS)
 # ==============================================================================
 st.divider()
-st.markdown("### 💰 Gastos Extras (Opção)")
+st.markdown("### 💰 Gastos Extras da Semana")
+st.caption("Marque a caixa **'Info (Não Reembolsar)'** caso a despesa seja apenas informativa (ex: pedágio pago pela empresa via tag).")
 
 gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
 qtd_gastos = max(1, len(gastos_salvos_default))
@@ -385,31 +408,45 @@ qtd_gastos = max(1, len(gastos_salvos_default))
 gastos_extras = []
 for idx in range(qtd_gastos):
     g_item = gastos_salvos_default[idx] if idx < len(gastos_salvos_default) else {}
-    col_desc, col_val, col_inf = st.columns([3, 2, 1])
+    col_desc, col_val, col_inf = st.columns([3, 2, 1.5])
     
     with col_desc:
-        g_desc = st.text_input(f"Descrição #{idx+1}", value=g_item.get("desc", ""), key=f"gdesc_{idx}")
+        g_desc = st.text_input(f"Despesa #{idx+1}", value=g_item.get("desc", ""), placeholder="Ex: Estacionamento, Café...", key=f"gdesc_{idx}")
     with col_val:
         v_salvo = converter_float(g_item.get("valor", 0.0))
         g_val = st.number_input(f"Valor R$ #{idx+1}", min_value=0.0, value=v_salvo, step=1.0, key=f"gval_{idx}")
     with col_inf:
-        g_inf = st.checkbox("Info", value=g_item.get("informativo", False), key=f"ginf_{idx}")
+        st.write("")
+        g_inf = st.checkbox("Apenas Info", value=g_item.get("informativo", False), key=f"ginf_{idx}")
 
     if g_desc.strip():
         gastos_extras.append({"desc": g_desc.strip(), "valor": g_val, "informativo": g_inf})
 
 # ==============================================================================
-# RESUMO E SUBMISSÃO
+# RESUMO FINANCEIRO COMPLETO E ENVIO
 # ==============================================================================
 st.divider()
+st.markdown("### 📊 Fechamento da Semana")
+
 VALOR_KM_TAXA = 1.17
 valor_total_km = km_total_calculado * VALOR_KM_TAXA
-valor_extras_reembolsavel = sum(g["valor"] for g in gastos_extras if not g.get("informativo", False))
-valor_total_geral = valor_total_km + valor_extras_reembolsavel
 
-col_m1, col_m2 = st.columns(2)
-col_m1.metric("Total KM", f"{km_total_calculado:.1f} km")
-col_m2.metric("Total Reembolso", f"R$ {valor_total_geral:.2f}")
+# Gastos que entram no reembolso (sem flag informativo)
+valor_extras_reembolsavel = sum(g["valor"] for g in gastos_extras if not g.get("informativo", False))
+
+# Gastos que são apenas informativos
+valor_extras_apenas_info = sum(g["valor"] for g in gastos_extras if g.get("informativo", False))
+
+# Total a pagar ao promotor
+valor_total_reembolso = valor_total_km + valor_extras_reembolsavel
+
+c_km, c_ext, c_tot = st.columns(3)
+c_km.metric("Reembolso KM", f"R$ {valor_total_km:.2f}", help=f"{km_total_calculado:.1f} km x R$ {VALOR_KM_TAXA}")
+c_ext.metric("Reembolso Extras", f"R$ {valor_extras_reembolsavel:.2f}")
+c_tot.metric("Total a Reembolsar", f"R$ {valor_total_reembolso:.2f}")
+
+if valor_extras_apenas_info > 0:
+    st.info(f"ℹ️ **Gastos Informativos registrados (não somam no reembolso):** R$ {valor_extras_apenas_info:.2f}")
 
 def construir_payload(status_envio):
     return {
@@ -419,11 +456,15 @@ def construir_payload(status_envio):
         "promotor": promotor_sel,
         "status": status_envio,
         "km_total": km_total_calculado,
-        "valor_total": valor_total_geral,
+        "valor_km": valor_total_km,
+        "valor_extras_reembolsavel": valor_extras_reembolsavel,
+        "valor_extras_informativo": valor_extras_apenas_info,
+        "valor_total": valor_total_reembolso,
         "gastos_extras": gastos_extras,
         "detalhes": detalhes_dias
     }
 
+st.write("")
 col_btn1, col_btn2 = st.columns(2)
 
 with col_btn1:
