@@ -5,6 +5,7 @@ import json
 import base64
 import os
 import glob
+import math
 import unicodedata
 import pydeck as pdk
 from datetime import datetime, timedelta
@@ -85,11 +86,10 @@ DADOS_PROMOTORES = {
 
 PROMOTORES = list(DADOS_PROMOTORES.keys())
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
-
 NOME_PLANILHA_CLIENTES = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
 
 # ==============================================================================
-# AUXILIARES DE FORMATAÇÃO E TEXTO
+# AUXILIARES DE FORMATAÇÃO E CÁLCULO DE DISTÂNCIA
 # ==============================================================================
 def normalizar_texto(txt):
     if not txt:
@@ -124,6 +124,32 @@ def calcular_intervalo_semana(num_semana, ano=None):
     domingo = segunda + timedelta(days=6)
     return segunda, domingo
 
+def distancia_haversine(lat1, lon1, lat2, lon2):
+    """Calcula a distância em linha reta (em km) entre dois pontos."""
+    R = 6371.0
+    dlat = math.radians(lat2 - lat1)
+    dlon = math.radians(lon2 - lon1)
+    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+def estimar_km_circuito_completo(lat_casa, lon_casa, pontos_lojas):
+    """
+    Calcula Casa -> Loja 1 -> Loja 2 ... -> Loja N -> Casa
+    Aplica fator de tortuosidade rodoviária/urbana (1.28)
+    """
+    if not pontos_lojas:
+        return 0.0
+    
+    rota = [(lat_casa, lon_casa)] + pontos_lojas + [(lat_casa, lon_casa)]
+    dist_total_linha_reta = 0.0
+    for i in range(len(rota) - 1):
+        dist_total_linha_reta += distancia_haversine(
+            rota[i][0], rota[i][1],
+            rota[i+1][0], rota[i+1][1]
+        )
+    return dist_total_linha_reta * 1.28
+
 # ==============================================================================
 # TELA DE IDENTIFICAÇÃO (QUEM É VOCÊ?)
 # ==============================================================================
@@ -148,13 +174,12 @@ if not st.session_state.usuario_ativo:
     st.stop()
 
 # ==============================================================================
-# CARREGAMENTO DA BASE CRUZADA (FILTRADA E ORDENADA POR COMPRAS, SEM VALOR NA TELA)
+# CARREGAMENTO DA BASE CRUZADA (FILTRADA E ORDENADA POR COMPRAS)
 # ==============================================================================
 @st.cache_data(ttl=1800)
 def carregar_base_cruzada():
     arqs = glob.glob("*.xlsx")
 
-    # 1. Localiza a planilha cadastral de clientes
     caminho_cli = NOME_PLANILHA_CLIENTES
     if caminho_cli not in arqs and arqs:
         for a in arqs:
@@ -189,9 +214,7 @@ def carregar_base_cruzada():
         st.error(f"Erro ao carregar cadastro de clientes: {e}")
         return pd.DataFrame()
 
-    # 2. Localiza o cubo de vendas mais recente no repositório
     candidatos_cubo = [a for a in arqs if "cubo" in a.lower() or "vendas" in a.lower()]
-    
     if not candidatos_cubo:
         return df_cli
 
@@ -201,21 +224,17 @@ def carregar_base_cruzada():
         df_vendas = pd.read_excel(caminho_vendas, sheet_name=0)
         df_vendas = df_vendas.dropna(subset=["CLIENTE CODIGO", "TOTAL VALOR"]).copy()
         df_vendas["CLIENTE CODIGO"] = df_vendas["CLIENTE CODIGO"].astype(int).astype(str).str.strip()
-        
-        # Filtra apenas quem comprou este ano (TOTAL VALOR > 0)
         df_vendas = df_vendas[df_vendas["TOTAL VALOR"] > 0]
         vendas_resumo = df_vendas.groupby("CLIENTE CODIGO")["TOTAL VALOR"].sum().reset_index()
     except Exception:
         return df_cli
 
-    # 3. Faz o merge interno e ordena pelo maior comprador (sem exibir o valor na tela)
     df_merged = pd.merge(df_cli, vendas_resumo, left_on="CÓDIGO", right_on="CLIENTE CODIGO", how="inner")
     df_merged = df_merged.sort_values(by="TOTAL VALOR", ascending=False)
     return df_merged
 
 DF_CLIENTES = carregar_base_cruzada()
 
-# Rótulo amigável: Apenas Nome, Bairro e Cidade/UF
 MAPA_GERAL_NOMES = {}
 if not DF_CLIENTES.empty:
     for _, r in DF_CLIENTES.iterrows():
@@ -335,7 +354,7 @@ if dados_salvos:
 st.divider()
 
 # ==============================================================================
-# REGISTROS DIÁRIOS
+# REGISTROS DIÁRIOS COM SUGESTÃO AUTOMÁTICA DE KM
 # ==============================================================================
 dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 detalhes_dias = []
@@ -363,30 +382,8 @@ for i, dia_nome in enumerate(dias_semana):
             lei_default = dados_dia_salvo.get("leitura", False)
             lei_sel = st.checkbox("Leituras?", value=lei_default, key=f"lei_{dia_nome}")
 
-        col_kmi, col_kmf = st.columns(2)
-        with col_kmi:
-            def_kmi = str_br_para_float(dados_dia_salvo.get("km_ini", km_fim_anterior))
-            km_ini_str = st.text_input(f"KM Inicial ({dia_nome})", value=float_para_str_br(def_kmi).replace(",00", ""), key=f"kmi_{dia_nome}")
-            km_ini = str_br_para_float(km_ini_str)
-
-        with col_kmf:
-            def_kmf = str_br_para_float(dados_dia_salvo.get("km_fim", def_kmi))
-            km_fim_str = st.text_input(f"KM Final ({dia_nome})", value=float_para_str_br(def_kmf).replace(",00", ""), key=f"kmf_{dia_nome}")
-            km_fim = str_br_para_float(km_fim_str)
-
-        km_dia = 0.0
-        if km_fim > 0.0:
-            if km_fim < km_ini:
-                st.error("⚠️ KM Final não pode ser menor que o KM Inicial!")
-            else:
-                km_dia = km_fim - km_ini
-                km_fim_anterior = km_fim
-                st.caption(f"🚘 KM Rodado no dia: **{float_para_str_br(km_dia)} km**")
-
-        km_total_calculado += km_dia
-
-        # Submenu por Cidade: lojas compradoras ordenadas internamente pelo volume
-        st.markdown("#### 🏬 Selecionar Lojas por Cidade")
+        # Submenu de Lojas por Cidade
+        st.markdown("#### 🏬 Selecionar Lojas Atendidas")
         cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
         clientes_dia_selecionados = []
 
@@ -429,11 +426,64 @@ for i, dia_nome in enumerate(dias_semana):
 
         clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
 
-        # Mapa com linha interligando a residência às lojas visitadas
-        if clientes_dia_selecionados and not DF_CLIENTES.empty:
-            df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
+        # ==============================================================================
+        # CÁLCULO DA SUGESTÃO DE KM (CASA -> CLIENTES -> CASA)
+        # ==============================================================================
+        km_sugerido_circuito = 0.0
+        df_atendidos = pd.DataFrame()
 
-            with st.expander(f"📍 Endereços Selecionados ({len(clientes_dia_selecionados)})", expanded=True):
+        if clientes_dia_selecionados and not DF_CLIENTES.empty and "lat" in dados_promotor_atual:
+            df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
+            df_com_coord = df_atendidos.dropna(subset=["lat", "lon"])
+            
+            if not df_com_coord.empty:
+                pontos_visitas = list(zip(df_com_coord["lat"], df_com_coord["lon"]))
+                km_sugerido_circuito = round(
+                    estimar_km_circuito_completo(dados_promotor_atual["lat"], dados_promotor_atual["lon"], pontos_visitas),
+                    1
+                )
+
+        # Campos de KM com sugestão inteligente
+        col_kmi, col_kmf = st.columns(2)
+        with col_kmi:
+            def_kmi = str_br_para_float(dados_dia_salvo.get("km_ini", km_fim_anterior))
+            km_ini_str = st.text_input(f"KM Inicial ({dia_nome})", value=float_para_str_br(def_kmi).replace(",00", ""), key=f"kmi_{dia_nome}")
+            km_ini = str_br_para_float(km_ini_str)
+
+        with col_kmf:
+            # Se não houver valor salvo anterior e houver sugestão calculada, sugere km_ini + km_sugerido
+            val_salvo_kmf = dados_dia_salvo.get("km_fim", None)
+            if val_salvo_kmf is not None and str(val_salvo_kmf) not in ["0", "0.0", ""]:
+                def_kmf = str_br_para_float(val_salvo_kmf)
+            elif km_sugerido_circuito > 0.0 and km_ini > 0.0:
+                def_kmf = km_ini + km_sugerido_circuito
+            else:
+                def_kmf = def_kmi
+
+            km_fim_str = st.text_input(
+                f"KM Final ({dia_nome})", 
+                value=float_para_str_br(def_kmf).replace(",00", ""), 
+                key=f"kmf_{dia_nome}"
+            )
+            km_fim = str_br_para_float(km_fim_str)
+
+        if km_sugerido_circuito > 0.0:
+            st.info(f"💡 **Sugestão de rota:** ~{float_para_str_br(km_sugerido_circuito)} km (Saindo de casa, passando nas {len(clientes_dia_selecionados)} lojas e voltando). O valor acima é editável!")
+
+        km_dia = 0.0
+        if km_fim > 0.0:
+            if km_fim < km_ini:
+                st.error("⚠️ KM Final não pode ser menor que o KM Inicial!")
+            else:
+                km_dia = km_fim - km_ini
+                km_fim_anterior = km_fim
+                st.caption(f"🚘 KM Rodado no dia: **{float_para_str_br(km_dia)} km**")
+
+        km_total_calculado += km_dia
+
+        # Mapa com circuito completo (Casa -> Lojas -> Casa)
+        if clientes_dia_selecionados and not df_atendidos.empty:
+            with st.expander(f"📍 Endereços Selecionados ({len(clientes_dia_selecionados)})", expanded=False):
                 for _, row in df_atendidos.iterrows():
                     st.markdown(f"**{row['NOME']}**  \n🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
 
@@ -448,7 +498,7 @@ for i, dia_nome in enumerate(dias_semana):
                     "ScatterplotLayer",
                     data=pd.DataFrame([{"lat": lat_casa, "lon": lon_casa}]),
                     get_position=["lon", "lat"],
-                    get_color=[0, 100, 255, 200],
+                    get_color=[0, 100, 255, 220],
                     get_radius=800,
                     pickable=True
                 )
@@ -457,18 +507,26 @@ for i, dia_nome in enumerate(dias_semana):
                     "ScatterplotLayer",
                     data=df_coords,
                     get_position=["lon", "lat"],
-                    get_color=[230, 40, 40, 200],
+                    get_color=[230, 40, 40, 220],
                     get_radius=500,
                     pickable=True
                 )
 
-                linhas_rotas = [{"origem": [lon_casa, lat_casa], "destino": [r["lon"], r["lat"]]} for _, r in df_coords.iterrows()]
+                linhas_circuito = []
+                coords_lista = list(zip(df_coords["lat"], df_coords["lon"]))
+                rota_pts = [(lat_casa, lon_casa)] + coords_lista + [(lat_casa, lon_casa)]
+                for idx_pt in range(len(rota_pts) - 1):
+                    linhas_circuito.append({
+                        "origem": [rota_pts[idx_pt][1], rota_pts[idx_pt][0]],
+                        "destino": [rota_pts[idx_pt+1][1], rota_pts[idx_pt+1][0]]
+                    })
+
                 camada_linhas = pdk.Layer(
                     "LineLayer",
-                    data=pd.DataFrame(linhas_rotas),
+                    data=pd.DataFrame(linhas_circuito),
                     get_source_position="origem",
                     get_target_position="destino",
-                    get_color=[30, 30, 30, 160],
+                    get_color=[30, 30, 30, 180],
                     get_width=3
                 )
 
@@ -487,7 +545,7 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS (COM VÍRGULA PADRÃO BRASIL)
+# GASTOS EXTRAS (DIGITAÇÃO COM VÍRGULA PADRÃO BRASIL)
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 Gastos Extras da Semana")
