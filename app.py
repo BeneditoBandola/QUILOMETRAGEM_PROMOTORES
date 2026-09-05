@@ -125,7 +125,6 @@ def calcular_intervalo_semana(num_semana, ano=None):
     return segunda, domingo
 
 def distancia_haversine(lat1, lon1, lat2, lon2):
-    """Calcula a distância em linha reta (em km) entre dois pontos."""
     R = 6371.0
     dlat = math.radians(lat2 - lat1)
     dlon = math.radians(lon2 - lon1)
@@ -134,21 +133,16 @@ def distancia_haversine(lat1, lon1, lat2, lon2):
     return R * c
 
 def estimar_km_circuito_completo(lat_casa, lon_casa, pontos_lojas):
-    """
-    Calcula Casa -> Loja 1 -> Loja 2 ... -> Loja N -> Casa
-    Aplica fator de tortuosidade rodoviária/urbana (1.28)
-    """
     if not pontos_lojas:
         return 0.0
-    
     rota = [(lat_casa, lon_casa)] + pontos_lojas + [(lat_casa, lon_casa)]
-    dist_total_linha_reta = 0.0
+    dist_total = 0.0
     for i in range(len(rota) - 1):
-        dist_total_linha_reta += distancia_haversine(
+        dist_total += distancia_haversine(
             rota[i][0], rota[i][1],
             rota[i+1][0], rota[i+1][1]
         )
-    return dist_total_linha_reta * 1.28
+    return dist_total * 1.28
 
 # ==============================================================================
 # TELA DE IDENTIFICAÇÃO (QUEM É VOCÊ?)
@@ -328,6 +322,7 @@ with col_sair:
     st.write("")
     if st.button("Trocar Promotor 🔄"):
         st.session_state.usuario_ativo = None
+        st.session_state.clear()
         st.rerun()
 
 st.caption(f"👤 Promotor(a): **{promotor_sel}**")
@@ -345,16 +340,28 @@ caminho_github = f"dados_promotores/S{num_semana}_{nome_prom_limpo}.json"
 
 dados_salvos, sha_arquivo = carregar_dados_github(caminho_github)
 
-if dados_salvos:
-    if dados_salvos.get("status") == "FINALIZADO":
-        st.success("✅ Esta semana já foi FINALIZADA.")
-    else:
-        st.warning("📝 Rascunho salvo anteriormente carregado!")
+# Controle de bloqueio
+esta_finalizado = False
+if dados_salvos and dados_salvos.get("status") == "FINALIZADO":
+    esta_finalizado = True
+    st.success("🔒 **Esta semana foi FINALIZADA e transmitida.** Todos os campos estão bloqueados para alteração.")
+    if st.button("🔓 Reabrir Semana para Correção"):
+        sucesso_reabrir = salvar_dados_github(
+            caminho_github,
+            {**dados_salvos, "status": "RASCUNHO"},
+            sha_existente=sha_arquivo,
+            mensagem_commit=f"Reaberto para edição S{num_semana} - {promotor_sel}"
+        )
+        if sucesso_reabrir:
+            st.success("Semana destravada com sucesso! Você pode editar agora.")
+            st.rerun()
+elif dados_salvos:
+    st.warning("📝 Rascunho salvo em aberto. Você pode alterar qualquer dia ou loja à vontade.")
 
 st.divider()
 
 # ==============================================================================
-# REGISTROS DIÁRIOS COM SUGESTÃO AUTOMÁTICA DE KM
+# REGISTROS DIÁRIOS
 # ==============================================================================
 dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 detalhes_dias = []
@@ -376,15 +383,35 @@ for i, dia_nome in enumerate(dias_semana):
         with col_sit:
             sit_default = dados_dia_salvo.get("sit", "Normal")
             idx_sit = SITUACOES.index(sit_default) if sit_default in SITUACOES else 0
-            sit_sel = st.selectbox(f"Situação ({dia_nome})", SITUACOES, index=idx_sit, key=f"sit_{dia_nome}")
+            sit_sel = st.selectbox(
+                f"Situação ({dia_nome})", 
+                SITUACOES, 
+                index=idx_sit, 
+                disabled=esta_finalizado,
+                key=f"sit_{dia_nome}"
+            )
 
         with col_lei:
             lei_default = dados_dia_salvo.get("leitura", False)
-            lei_sel = st.checkbox("Leituras?", value=lei_default, key=f"lei_{dia_nome}")
+            lei_sel = st.checkbox(
+                "Leituras?", 
+                value=lei_default, 
+                disabled=esta_finalizado,
+                key=f"lei_{dia_nome}"
+            )
 
-        # Submenu de Lojas por Cidade
-        st.markdown("#### 🏬 Selecionar Lojas Atendidas")
+        # Submenu de Seleção e Edição de Lojas
+        st.markdown("#### 🏬 Lojas Atendidas no Dia")
+        if not esta_finalizado:
+            st.caption("Você pode alterar, adicionar ou remover lojas a qualquer momento:")
+
         cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
+        
+        # Chave de estado para permitir alteração dinâmica sem travar
+        session_key_lojas = f"lojas_selecionadas_{dia_nome}"
+        if session_key_lojas not in st.session_state:
+            st.session_state[session_key_lojas] = cods_salvos_dia
+
         clientes_dia_selecionados = []
 
         if not DF_CLIENTES.empty:
@@ -395,40 +422,49 @@ for i, dia_nome in enumerate(dias_semana):
                 
                 nome_cidade_exibicao = df_cidade["CIDADE_RAW"].iloc[0]
                 codigos_da_cidade = df_cidade["CÓDIGO"].tolist()
-                defaults_cidade = [c for c in cods_salvos_dia if c in codigos_da_cidade]
+                
+                # Resgata o que está atualmente selecionado nesta cidade
+                defaults_cidade = [c for c in st.session_state[session_key_lojas] if c in codigos_da_cidade]
 
                 with st.expander(f"🏙️ {nome_cidade_exibicao} ({len(df_cidade)} lojas)", expanded=bool(defaults_cidade)):
                     escolhidos_cid = st.multiselect(
                         f"Lojas em {nome_cidade_exibicao}:",
                         options=codigos_da_cidade,
                         default=defaults_cidade,
+                        disabled=esta_finalizado,
                         format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
                         key=f"cli_{dia_nome}_{cid_norm}"
                     )
                     clientes_dia_selecionados.extend(escolhidos_cid)
 
-            # Cidade fora da rota usual
+            # Opção de cidade fora da rota
             with st.expander("🌐 Outra Cidade / Fora da Rota Usual", expanded=False):
                 cidades_fora = [c for c in todas_cidades_norm if c not in cidades_disponiveis_promotor]
-                cid_extra = st.selectbox(f"Escolha a cidade fora da rota ({dia_nome}):", ["-- Selecione --"] + cidades_fora, key=f"extra_cid_{dia_nome}")
+                cid_extra = st.selectbox(
+                    f"Escolha a cidade fora da rota ({dia_nome}):", 
+                    ["-- Selecione --"] + cidades_fora, 
+                    disabled=esta_finalizado,
+                    key=f"extra_cid_{dia_nome}"
+                )
                 if cid_extra != "-- Selecione --":
                     df_extra = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_extra]
                     cods_extra = df_extra["CÓDIGO"].tolist()
-                    defaults_extra = [c for c in cods_salvos_dia if c in cods_extra]
+                    defaults_extra = [c for c in st.session_state[session_key_lojas] if c in cods_extra]
                     escolhidos_extra = st.multiselect(
                         f"Lojas em {cid_extra}:",
                         options=cods_extra,
                         default=defaults_extra,
+                        disabled=esta_finalizado,
                         format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
                         key=f"cli_extra_{dia_nome}"
                     )
                     clientes_dia_selecionados.extend(escolhidos_extra)
 
+        # Atualiza estado das lojas selecionadas no dia
         clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
+        st.session_state[session_key_lojas] = clientes_dia_selecionados
 
-        # ==============================================================================
-        # CÁLCULO DA SUGESTÃO DE KM (CASA -> CLIENTES -> CASA)
-        # ==============================================================================
+        # Cálculo da Sugestão de KM do circuito (Casa -> Lojas -> Casa)
         km_sugerido_circuito = 0.0
         df_atendidos = pd.DataFrame()
 
@@ -443,15 +479,19 @@ for i, dia_nome in enumerate(dias_semana):
                     1
                 )
 
-        # Campos de KM com sugestão inteligente
+        # Inputs de KM
         col_kmi, col_kmf = st.columns(2)
         with col_kmi:
             def_kmi = str_br_para_float(dados_dia_salvo.get("km_ini", km_fim_anterior))
-            km_ini_str = st.text_input(f"KM Inicial ({dia_nome})", value=float_para_str_br(def_kmi).replace(",00", ""), key=f"kmi_{dia_nome}")
+            km_ini_str = st.text_input(
+                f"KM Inicial ({dia_nome})", 
+                value=float_para_str_br(def_kmi).replace(",00", ""), 
+                disabled=esta_finalizado,
+                key=f"kmi_{dia_nome}"
+            )
             km_ini = str_br_para_float(km_ini_str)
 
         with col_kmf:
-            # Se não houver valor salvo anterior e houver sugestão calculada, sugere km_ini + km_sugerido
             val_salvo_kmf = dados_dia_salvo.get("km_fim", None)
             if val_salvo_kmf is not None and str(val_salvo_kmf) not in ["0", "0.0", ""]:
                 def_kmf = str_br_para_float(val_salvo_kmf)
@@ -463,12 +503,13 @@ for i, dia_nome in enumerate(dias_semana):
             km_fim_str = st.text_input(
                 f"KM Final ({dia_nome})", 
                 value=float_para_str_br(def_kmf).replace(",00", ""), 
+                disabled=esta_finalizado,
                 key=f"kmf_{dia_nome}"
             )
             km_fim = str_br_para_float(km_fim_str)
 
-        if km_sugerido_circuito > 0.0:
-            st.info(f"💡 **Sugestão de rota:** ~{float_para_str_br(km_sugerido_circuito)} km (Saindo de casa, passando nas {len(clientes_dia_selecionados)} lojas e voltando). O valor acima é editável!")
+        if km_sugerido_circuito > 0.0 and not esta_finalizado:
+            st.info(f"💡 **Sugestão de trajeto:** ~{float_para_str_br(km_sugerido_circuito)} km (Circuito ida e volta). O valor é totalmente editável!")
 
         km_dia = 0.0
         if km_fim > 0.0:
@@ -481,16 +522,16 @@ for i, dia_nome in enumerate(dias_semana):
 
         km_total_calculado += km_dia
 
-        # Mapa com circuito completo (Casa -> Lojas -> Casa)
+        # Resumo visual das lojas e mapa com rotas
         if clientes_dia_selecionados and not df_atendidos.empty:
-            with st.expander(f"📍 Endereços Selecionados ({len(clientes_dia_selecionados)})", expanded=False):
+            with st.expander(f"📍 Lojas Atendidas no Dia ({len(clientes_dia_selecionados)})", expanded=True):
                 for _, row in df_atendidos.iterrows():
-                    st.markdown(f"**{row['NOME']}**  \n🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
+                    st.markdown(f"• **{row['NOME']}**  \n  🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
 
             df_coords = df_atendidos.dropna(subset=["lat", "lon"]).copy()
 
             if not df_coords.empty and "lat" in dados_promotor_atual:
-                st.caption("🗺️ Rota: Casa do Promotor (Azul) ➔ Lojas Atendidas (Vermelho):")
+                st.caption("🗺️ Circuito: Residência (Azul) ➔ Lojas Atendidas (Vermelho):")
                 lat_casa = dados_promotor_atual["lat"]
                 lon_casa = dados_promotor_atual["lon"]
 
@@ -545,11 +586,10 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS (DIGITAÇÃO COM VÍRGULA PADRÃO BRASIL)
+# GASTOS EXTRAS
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 Gastos Extras da Semana")
-st.caption("Digite o valor com **vírgula** (Exemplo: `25,50` ou `150,00`).")
 
 gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
 qtd_gastos = max(1, len(gastos_salvos_default))
@@ -564,6 +604,7 @@ for idx in range(qtd_gastos):
             f"Despesa #{idx+1}", 
             value=g_item.get("desc", ""), 
             placeholder="Ex: Estacionamento, Refeição...", 
+            disabled=esta_finalizado,
             key=f"gdesc_{idx}"
         )
     with col_val:
@@ -574,6 +615,7 @@ for idx in range(qtd_gastos):
             f"Valor R$ #{idx+1}", 
             value=v_salvo_txt, 
             placeholder="0,00", 
+            disabled=esta_finalizado,
             key=f"gval_{idx}"
         )
         v_float = str_br_para_float(g_val_txt)
@@ -582,7 +624,7 @@ for idx in range(qtd_gastos):
         gastos_extras.append({"desc": g_desc.strip(), "valor": v_float})
 
 # ==============================================================================
-# RESUMO FINANCEIRO (COM VÍRGULA)
+# RESUMO FINANCEIRO E ENVIO
 # ==============================================================================
 st.divider()
 st.markdown("### 📊 Fechamento da Semana")
@@ -613,31 +655,34 @@ def construir_payload(status_envio):
     }
 
 st.write("")
-col_btn1, col_btn2 = st.columns(2)
+if not esta_finalizado:
+    col_btn1, col_btn2 = st.columns(2)
 
-with col_btn1:
-    if st.button("💾 Salvar Rascunho"):
-        payload = construir_payload("RASCUNHO")
-        sucesso = salvar_dados_github(
-            caminho_github, 
-            payload, 
-            sha_existente=sha_arquivo,
-            mensagem_commit=f"Rascunho S{num_semana} - {promotor_sel}"
-        )
-        if sucesso:
-            st.success("Rascunho salvo no GitHub!")
-            st.rerun()
+    with col_btn1:
+        if st.button("💾 Salvar Rascunho"):
+            payload = construir_payload("RASCUNHO")
+            sucesso = salvar_dados_github(
+                caminho_github, 
+                payload, 
+                sha_existente=sha_arquivo,
+                mensagem_commit=f"Rascunho S{num_semana} - {promotor_sel}"
+            )
+            if sucesso:
+                st.success("Rascunho salvo com sucesso! Você pode continuar editando.")
+                st.rerun()
 
-with col_btn2:
-    if st.button("🚀 Finalizar Semana", type="primary"):
-        payload = construir_payload("FINALIZADO")
-        sucesso = salvar_dados_github(
-            caminho_github, 
-            payload, 
-            sha_existente=sha_arquivo,
-            mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
-        )
-        if sucesso:
-            st.balloons()
-            st.success("Semana finalizada com sucesso!")
-            st.rerun()
+    with col_btn2:
+        if st.button("🚀 Finalizar Semana", type="primary"):
+            payload = construir_payload("FINALIZADO")
+            sucesso = salvar_dados_github(
+                caminho_github, 
+                payload, 
+                sha_existente=sha_arquivo,
+                mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
+            )
+            if sucesso:
+                st.balloons()
+                st.success("Semana FINALIZADA com sucesso! Os campos foram bloqueados.")
+                st.rerun()
+else:
+    st.info("ℹ️ Para realizar qualquer edição nesta semana, clique no botão **'🔓 Reabrir Semana para Correção'** no topo da página.")
