@@ -1,0 +1,89 @@
+{
+    "id": 1789340404,
+    "semana_ref": "37",
+    "intervalo_datas": "07/09 a 13/09",
+    "promotor": "Fernanda Dias Ferreira",
+    "status": "FINALIZADO",
+    "km_total": 182.0,
+    "valor_km": 212.94,
+    "valor_extras": 24.95,
+    "valor_total": 237.89,
+    "gastos_extras": [
+        {
+            "desc": "impressao",
+            "valor": 24.95
+        }
+    ],
+    "detalhes": [
+        {
+            "dia": "Segunda",
+            "data": "07/09",
+            "km": 0.0,
+            "sit": "Feriado",
+            "clientes": [],
+            "leitura": true,
+            "km_ini": 0.0,
+            "km_fim": 0.0
+        },
+        {
+            "dia": "Terça",
+            "data": "08/09",
+            "km": 82.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": true,
+            "km_ini": 82031.0,
+            "km_fim": 82113.0
+        },
+        {
+            "dia": "Quarta",
+            "data": "09/09",
+            "km": 18.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 82113.0,
+            "km_fim": 82131.0
+        },
+        {
+            "dia": "Quinta",
+            "data": "10/09",
+            "km": 62.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 82131.0,
+            "km_fim": 82193.0
+        },
+        {
+            "dia": "Sexta",
+            "data": "11/09",
+            "km": 20.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 82193.0,
+            "km_fim": 82213.0
+        },
+        {
+            "dia": "Sábado",
+            "data": "12/09",
+            "km": 0.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 0.0,
+            "km_fim": 0.0
+        },
+        {
+            "dia": "Domingo",
+            "data": "13/09",
+            "km": 0.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 0.0,
+            "km_fim": 0.0
+        }
+    ]
+}
