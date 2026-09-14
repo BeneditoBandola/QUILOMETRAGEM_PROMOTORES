@@ -308,7 +308,7 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     is_teste = payload_dados.get("is_teste", False)
     sufixo_assunto = " [TESTE]" if is_teste else ""
 
-    nome_arq_pdf = f"Resumo_Financeiro_Semana_{semana_num}_{promotor_nome.replace(' ', '_')}.pdf"
+    nome_arq_pdf = f"Resumo_Financeiro_Semana_{num_semana}_{promotor_nome.replace(' ', '_')}.pdf"
     gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, nome_arq_pdf)
 
     assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {semana_num} - {promotor_nome}"
@@ -510,7 +510,7 @@ is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 
 if is_area_teste:
     st.markdown("### 🧪 ÁREA DE TESTES E SIMULAÇÃO")
-    st.info("Escolha abaixo se deseja testar com um promotor específico ou disparar simulações em lote para todos.")
+    st.info("Escolha abaixo o promotor (ou todos em lote), informe a semana e clique para gerar e disparar os testes de e-mail com PDF.")
     
     escolha_teste_promotor = st.selectbox("ESCOLHA O PROMOTOR PARA O TESTE:", options=["🔄 Todos os Promotores (Lote)"] + PROMOTORES)
     num_semana_teste = st.number_input("Nº DA SEMANA PARA O TESTE:", min_value=1, max_value=53, value=int(datetime.now().isocalendar()[1]))
@@ -898,19 +898,22 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS
+# GASTOS EXTRAS COM BOTÃO DINÂMICO "ADICIONAR DESPESA"
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 GASTOS EXTRAS")
 
-gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
-qtd_gastos = max(1, len(gastos_salvos_default))
+# Inicializar contador de gastos extras no session_state se não existir
+if "num_gastos_extras" not in st.session_state:
+    gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
+    st.session_state.num_gastos_extras = max(1, len(gastos_salvos_default))
 
 gastos_extras = []
-for idx in range(qtd_gastos):
+for idx in range(st.session_state.num_gastos_extras):
+    gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
     g_item = gastos_salvos_default[idx] if idx < len(gastos_salvos_default) else {}
-    col_desc, col_val = st.columns([3, 2])
     
+    col_desc, col_val, col_del = st.columns([3, 2, 0.8])
     with col_desc:
         g_desc = st.text_input(
             f"Despesa #{idx+1}", 
@@ -922,7 +925,6 @@ for idx in range(qtd_gastos):
     with col_val:
         v_salvo_num = g_item.get("valor", 0.0)
         v_salvo_txt = float_para_str_br(v_salvo_num) if v_salvo_num > 0 else ""
-        
         g_val_txt = st.text_input(
             f"Valor R$ #{idx+1}", 
             value=v_salvo_txt, 
@@ -934,6 +936,11 @@ for idx in range(qtd_gastos):
 
     if g_desc.strip() and v_float > 0:
         gastos_extras.append({"desc": g_desc.strip(), "valor": v_float})
+
+if not esta_finalizado:
+    if st.button("➕ ADICIONAR OUTRA DESPESA EXTRA"):
+        st.session_state.num_gastos_extras += 1
+        st.rerun()
 
 # ==============================================================================
 # RESUMO FINANCEIRO
@@ -989,7 +996,7 @@ if not esta_finalizado:
             HISTORICO_GERAL[chave_registro] = payload
             sucesso = salvar_base_historico_github(
                 HISTORICO_GERAL, 
-                sha_existente=SHA_GERAL,
+                sha_existental=SHA_GERAL,
                 mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
             )
             if sucesso:
