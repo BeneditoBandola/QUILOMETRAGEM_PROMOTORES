@@ -318,7 +318,7 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
       <body style="font-family: Arial, sans-serif; color: #333;">
         <h2 style="color: #1B5E20;">Minassal - Fechamento de KM e Reembolso {sufixo_assunto}</h2>
         <p><b>Promotor(a):</b> {promotor_nome}</p>
-        <p><b>Semana de Referência:</b> Semana {num_semana} ({intervalo})</p>
+        <p><b>Semana de Referência:</b> Semana {semana_num} ({intervalo})</p>
         <hr/>
         <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM, rotas e despesas extras.</p>
         <p><b>Valor Total a Pagar: R$ {float_para_str_br(payload_dados['valor_total'])}</b></p>
@@ -509,13 +509,100 @@ promotor_sel = st.session_state.usuario_ativo
 is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 
 if is_area_teste:
-    # Definir promotor padrão para simulação na área de testes
-    promotor_simulado = "Pamela Camila de Almeida Alexandrino"
-    dados_promotor_atual = DADOS_PROMOTORES[promotor_simulado]
-else:
-    promotor_simulado = promotor_sel
-    dados_promotor_atual = DADOS_PROMOTORES.get(promotor_sel, {})
+    st.markdown("### 🧪 ÁREA DE TESTES E SIMULAÇÃO")
+    st.info("Escolha abaixo se deseja testar com um promotor específico ou disparar simulações em lote para todos.")
+    
+    escolha_teste_promotor = st.selectbox("ESCOLHA O PROMOTOR PARA O TESTE:", options=["🔄 Todos os Promotores (Lote)"] + PROMOTORES)
+    num_semana_teste = st.number_input("Nº DA SEMANA PARA O TESTE:", min_value=1, max_value=53, value=int(datetime.now().isocalendar()[1]))
+    
+    if st.button("⚡ GERAR E DISPARAR TESTE(S) AGORA"):
+        promotores_alvo = PROMOTORES if escolha_teste_promotor == "🔄 Todos os Promotores (Lote)" else [escolha_teste_promotor]
+        seg_t, dom_t = calcular_intervalo_semana(num_semana_teste)
+        int_str_t = f"{seg_t.strftime('%d/%m')} a {dom_t.strftime('%d/%m')}"
 
+        sucessos = 0
+        for p_nome in promotores_alvo:
+            p_dados = DADOS_PROMOTORES[p_nome]
+            cidades_p = [normalizar_texto(c) for c in p_dados.get("cidades", [])]
+
+            dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+            detalhes_ficticios = []
+            km_tot_fict = 0.0
+            km_base = 100.0
+
+            for idx_d, d_nome in enumerate(dias_semana):
+                dt_d = (seg_t + timedelta(days=idx_d)).strftime("%d/%m")
+                sit_f = "Normal" if idx_d not in [5, 6] else "Folga"
+                cli_f = []
+                km_d_f = 0.0
+                kmi_f = km_base
+                kmf_f = km_base
+
+                if sit_f == "Normal" and not DF_CLIENTES.empty:
+                    df_prom = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"].isin(cidades_p)]
+                    if df_prom.empty:
+                        df_prom = DF_CLIENTES
+                    amostra = df_prom.sample(n=min(3, len(df_prom)))
+                    cli_f = amostra["CÓDIGO"].tolist()
+                    km_d_f = round(random.uniform(45.0, 95.0), 1)
+                    kmf_f = kmi_f + km_d_f
+                    km_base = kmf_f
+
+                detalhes_ficticios.append({
+                    "dia": d_nome,
+                    "data": dt_d,
+                    "km": km_d_f,
+                    "sit": sit_f,
+                    "clientes": cli_f,
+                    "leitura": True,
+                    "km_ini": kmi_f,
+                    "km_fim": kmf_f
+                })
+                km_tot_fict += km_d_f
+
+            gastos_fict = [{"desc": "Almoço de Teste", "valor": 42.50}, {"desc": "Estacionamento", "valor": 15.00}]
+            v_km_fict = km_tot_fict * VALOR_KM_TAXA
+            v_ext_fict = sum(g["valor"] for g in gastos_fict)
+            v_tot_fict = v_km_fict + v_ext_fict
+
+            payload_teste = {
+                "id": int(datetime.now().timestamp()),
+                "semana_ref": str(num_semana_teste),
+                "intervalo_datas": int_str_t,
+                "promotor": p_nome,
+                "status": "FINALIZADO",
+                "is_teste": True,
+                "km_total": km_tot_fict,
+                "valor_km": v_km_fict,
+                "valor_extras": v_ext_fict,
+                "valor_total": v_tot_fict,
+                "gastos_extras": gastos_fict,
+                "detalhes": detalhes_ficticios
+            }
+
+            chave_reg_t = f"{p_nome}_S{num_semana_teste}"
+            HISTORICO_GERAL[chave_reg_t] = payload_teste
+            ok_mail, _ = enviar_email_com_pdf(p_nome, num_semana_teste, int_str_t, payload_teste)
+            if ok_mail:
+                sucessos += 1
+
+        ok_salvar = salvar_base_historico_github(HISTORICO_GERAL, sha_existente=SHA_GERAL, mensagem_commit=f"Testes em lote S{num_semana_teste}")
+        if ok_salvar and sucessos > 0:
+            st.success(f"✅ Testes executados com sucesso! {sucessos} relatório(s) gerado(s) e e-mail(s) disparado(s).")
+            st.balloons()
+        else:
+            st.warning("Houve falha ao salvar no GitHub ou disparar os e-mails.")
+
+    st.write("")
+    if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
+        st.session_state.usuario_ativo = None
+        st.rerun()
+    st.stop()
+
+# ==============================================================================
+# FLUXO NORMAL DO PROMOTOR
+# ==============================================================================
+dados_promotor_atual = DADOS_PROMOTORES.get(promotor_sel, {})
 cidades_definidas = dados_promotor_atual.get("cidades", [])
 cidades_norm_promotor = [normalizar_texto(c) for c in cidades_definidas]
 
@@ -528,15 +615,9 @@ if not DF_CLIENTES.empty:
 else:
     cidades_disponiveis_promotor = []
 
-# ==============================================================================
-# CABEÇALHO DO APLICATIVO
-# ==============================================================================
 col_tit, col_sair = st.columns([3, 1])
 with col_tit:
-    if is_area_teste:
-        st.markdown("<h2 style='color:#FDD818 !important; margin:0;'># ÁREA DE TESTES [SIMULAÇÃO]</h2>", unsafe_allow_html=True)
-    else:
-        st.markdown("<h2 style='color:#FDD818 !important; margin:0;'># CONTROLE DE KM</h2>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#FDD818 !important; margin:0;'># CONTROLE DE KM</h2>", unsafe_allow_html=True)
 with col_sair:
     st.write("")
     if st.button("TROCAR 🔄"):
@@ -544,10 +625,7 @@ with col_sair:
         st.session_state.clear()
         st.rerun()
 
-if is_area_teste:
-    st.markdown(f"**MODO:** Simulação de Teste (Utilizando perfil de: *{promotor_simulado}*)")
-else:
-    st.markdown(f"**PROMOTOR(A):** {promotor_sel}")
+st.markdown(f"**PROMOTOR(A):** {promotor_sel}")
 st.caption(f"🏠 {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
 
 semana_atual_default = int(datetime.now().isocalendar()[1])
@@ -560,11 +638,8 @@ st.markdown(f"<div style='padding:6px 12px; background:#141414; border-left:4px 
 chave_registro = f"{promotor_sel}_S{num_semana}"
 dados_salvos = HISTORICO_GERAL.get(chave_registro, None)
 
-# ==============================================================================
-# PAINEL DE GESTÃO E EXCLUSÃO DE LANÇAMENTOS (LIBERDADE PARA APAGAR TESTES)
-# ==============================================================================
 with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS", expanded=False):
-    st.markdown("Selecione um lançamento cadastrado no histórico geral para excluí-lo (ideal para limpar testes):")
+    st.markdown("Selecione um lançamento cadastrado no histórico geral para excluí-lo:")
     semanas_cadastradas = list(HISTORICO_GERAL.keys())
     if semanas_cadastradas:
         chave_para_apagar = st.selectbox("Lançamento cadastrado:", semanas_cadastradas)
@@ -581,78 +656,6 @@ with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS", expanded=False):
     else:
         st.info("Nenhum lançamento no histórico.")
 
-# ==============================================================================
-# BOTÃO DE GERAR SEMANA FICTÍCIA (EXCLUSIVO NA ÁREA DE TESTES)
-# ==============================================================================
-if is_area_teste:
-    st.markdown("### 🧪 GERADOR DE TESTE AUTOMÁTICO")
-    st.info("Clique no botão abaixo para preencher automaticamente uma semana fictícia completa com lojas reais da cidade, quilometragem e despesas, testando a geração do PDF e o envio imediato por e-mail.")
-    if st.button("⚡ DISPARAR TESTE FICTÍCIO AGORA"):
-        dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
-        detalhes_ficticios = []
-        km_tot_fict = 0.0
-        km_base = 100.0
-
-        for idx_d, d_nome in enumerate(dias_semana):
-            dt_d = (segunda + timedelta(days=idx_d)).strftime("%d/%m")
-            sit_f = "Normal" if idx_d not in [5, 6] else "Folga"
-            cli_f = []
-            km_d_f = 0.0
-            kmi_f = km_base
-            kmf_f = km_base
-
-            if sit_f == "Normal" and not DF_CLIENTES.empty:
-                df_prom = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"].isin(cidades_norm_promotor)]
-                if df_prom.empty:
-                    df_prom = DF_CLIENTES
-                amostra = df_prom.sample(n=min(3, len(df_prom)))
-                cli_f = amostra["CÓDIGO"].tolist()
-                km_d_f = round(random.uniform(45.0, 95.0), 1)
-                kmf_f = kmi_f + km_d_f
-                km_base = kmf_f
-
-            detalhes_ficticios.append({
-                "dia": d_nome,
-                "data": dt_d,
-                "km": km_d_f,
-                "sit": sit_f,
-                "clientes": cli_f,
-                "leitura": True,
-                "km_ini": kmi_f,
-                "km_fim": kmf_f
-            })
-            km_tot_fict += km_d_f
-
-        gastos_fict = [{"desc": "Almoço de Teste", "valor": 42.50}, {"desc": "Estacionamento", "valor": 15.00}]
-        v_km_fict = km_tot_fict * VALOR_KM_TAXA
-        v_ext_fict = sum(g["valor"] for g in gastos_fict)
-        v_tot_fict = v_km_fict + v_ext_fict
-
-        payload_teste = {
-            "id": int(datetime.now().timestamp()),
-            "semana_ref": str(num_semana),
-            "intervalo_datas": intervalo_str,
-            "promotor": promotor_simulado,
-            "status": "FINALIZADO",
-            "is_teste": True,
-            "km_total": km_tot_fict,
-            "valor_km": v_km_fict,
-            "valor_extras": v_ext_fict,
-            "valor_total": v_tot_fict,
-            "gastos_extras": gastos_fict,
-            "detalhes": detalhes_ficticios
-        }
-
-        HISTORICO_GERAL[chave_registro] = payload_teste
-        ok_salvar = salvar_base_historico_github(HISTORICO_GERAL, sha_existente=SHA_GERAL, mensagem_commit=f"Teste fictício S{num_semana} - {promotor_simulado}")
-        if ok_salvar:
-            ok_mail, msg_mail = enviar_email_com_pdf(promotor_simulado, num_semana, intervalo_str, payload_teste)
-            if ok_mail:
-                st.success("✅ Teste executado com sucesso! O PDF foi gerado e enviado para o seu e-mail.")
-            else:
-                st.warning(f"Salvo no JSON, mas falhou ao enviar e-mail: {msg_mail}")
-            st.balloons()
-
 st.divider()
 
 esta_finalizado = False
@@ -667,7 +670,7 @@ if dados_salvos and dados_salvos.get("status") == "FINALIZADO":
         sucesso_reabrir = salvar_base_historico_github(
             HISTORICO_GERAL,
             sha_existente=SHA_GERAL,
-            mensagem_commit=f"Reaberto para edição S{num_semana}"
+            mensagem_commit=f"Reaberto para edição S{num_semana} - {promotor_sel}"
         )
         if sucesso_reabrir:
             st.success("Semana destravada com sucesso!")
@@ -952,9 +955,9 @@ def construir_payload(status_envio):
         "id": int(datetime.now().timestamp()),
         "semana_ref": str(num_semana),
         "intervalo_datas": intervalo_str,
-        "promotor": promotor_simulado,
+        "promotor": promotor_sel,
         "status": status_envio,
-        "is_teste": is_area_teste,
+        "is_teste": False,
         "km_total": km_total_calculado,
         "valor_km": valor_total_km,
         "valor_extras": valor_extras_total,
@@ -974,7 +977,7 @@ if not esta_finalizado:
             sucesso = salvar_base_historico_github(
                 HISTORICO_GERAL, 
                 sha_existente=SHA_GERAL,
-                mensagem_commit=f"Rascunho S{num_semana} - {promotor_simulado}"
+                mensagem_commit=f"Rascunho S{num_semana} - {promotor_sel}"
             )
             if sucesso:
                 st.success("Rascunho salvo com sucesso!")
@@ -987,10 +990,10 @@ if not esta_finalizado:
             sucesso = salvar_base_historico_github(
                 HISTORICO_GERAL, 
                 sha_existente=SHA_GERAL,
-                mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_simulado}"
+                mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
             )
             if sucesso:
-                ok_email, msg_email = enviar_email_com_pdf(promotor_simulado, num_semana, intervalo_str, payload)
+                ok_email, msg_email = enviar_email_com_pdf(promotor_sel, num_semana, intervalo_str, payload)
                 if ok_email:
                     st.success("Semana finalizada, bloqueada e e-mail com PDF executivo enviado com sucesso!")
                 else:
