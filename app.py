@@ -8,6 +8,9 @@ import glob
 import math
 import unicodedata
 import pydeck as pdk
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from datetime import datetime, timedelta
 
 # ==============================================================================
@@ -100,64 +103,58 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ==============================================================================
-# DADOS DOS PROMOTORES
+# DADOS DOS PROMOTORES E E-MAILS
 # ==============================================================================
 DADOS_PROMOTORES = {
     "Pamela Camila de Almeida Alexandrino": {
         "endereco": "Rua Doutor Rowilson Flora, 753 - Poços de Caldas/MG",
+        "email": "pamelaalmeida5@icloud.com",
         "lat": -21.7858,
         "lon": -46.5625,
-        "cidades": [
-            "POÇOS DE CALDAS", "ANDRADAS", "GUAXUPÉ", "ITAJUBA", "POUSO ALEGRE",
-            "VARGINHA", "TRÊS PONTAS", "TRÊS CORAÇÕES", "MACHADO", "ALFENAS"
-        ]
+        "cidades": ["POÇOS DE CALDAS", "ANDRADAS", "GUAXUPÉ", "ITAJUBA", "POUSO ALEGRE", "VARGINHA", "TRÊS PONTAS", "TRÊS CORAÇÕES", "MACHADO", "ALFENAS"]
     },
     "Fernanda Dias Ferreira": {
         "endereco": "Rua Jorge Raimundo, 409 - Juiz de Fora/MG",
+        "email": "fernandaferreira_jf@yahoo.com.br",
         "lat": -21.7642,
         "lon": -43.3496,
-        "cidades": [
-            "JUIZ DE FORA"
-        ]
+        "cidades": ["JUIZ DE FORA"]
     },
     "Saruete Valeska Stabile de Oliveira": {
         "endereco": "Rua José Gonçalves de Souza, 105 - São José do Rio Preto/SP",
+        "email": "saruetesjrp79@gmail.com",
         "lat": -20.8113,
         "lon": -49.3758,
-        "cidades": [
-            "SÃO JOSÉ DO RIO PRETO", "MIRASSOL", "CATANDUVA"
-        ]
+        "cidades": ["SÃO JOSÉ DO RIO PRETO", "MIRASSOL", "CATANDUVA"]
     },
     "Carolina Rodrigues Bruno": {
         "endereco": "Rua Doutor Bernardino de Campos - São Carlos/SP",
+        "email": "Crbruno27123@gmail.com",
         "lat": -22.0175,
         "lon": -47.8908,
-        "cidades": [
-            "SÃO CARLOS", "ARARAQUARA", "MATÃO"
-        ]
+        "cidades": ["SÃO CARLOS", "ARARAQUARA", "MATÃO"]
     },
     "Madalla Teixeira Reis": {
         "endereco": "Rua Odilon Machado, 105 - Tocantins/MG",
+        "email": "madallareis66@gmail.com",
         "lat": -21.1764,
         "lon": -43.0181,
-        "cidades": [
-            "UBÁ", "DESCOBERTO", "SÃO JOÃO NEPOMUCENO", "VIÇOSA",
-            "TOCANTINS", "RODEIRO", "PIRAÚBA", "GUARANI", "RIO POMBA", "RIO NOVO"
-        ]
+        "cidades": ["UBÁ", "DESCOBERTO", "SÃO JOÃO NEPOMUCENO", "VIÇOSA", "TOCANTINS", "RODEIRO", "PIRAÚBA", "GUARANI", "RIO POMBA", "RIO NOVO"]
     },
     "Rodrigo Luis Adao": {
         "endereco": "Avenida Professora Edul Rangel Rabello, 405 - Ribeirão Preto/SP",
+        "email": "",
         "lat": -21.2075,
         "lon": -47.7981,
-        "cidades": [
-            "RIBEIRÃO PRETO"
-        ]
+        "cidades": ["RIBEIRÃO PRETO"]
     }
 }
 
 PROMOTORES = list(DADOS_PROMOTORES.keys())
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
 NOME_PLANILHA_CLIENTES = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
+EMAIL_PRINCIPAL = "benedito.bandola@minassal.com.br"
+EMAIL_REMETENTE = "beneditobandola@gmail.com"
 
 # ==============================================================================
 # AUXILIARES DE FORMATAÇÃO E CÁLCULOS
@@ -214,6 +211,70 @@ def estimar_km_circuito_completo(lat_casa, lon_casa, pontos_lojas):
             rota[i+1][0], rota[i+1][1]
         )
     return dist_total * 1.28
+
+# ==============================================================================
+# FUNÇÃO DE ENVIO DE E-MAIL SMTP
+# ==============================================================================
+def enviar_email_resumo(promotor_nome, semana_num, intervalo, payload_dados):
+    destinatario_promotor = DADOS_PROMOTORES.get(promotor_nome, {}).get("email", "")
+    destinatarios = [EMAIL_PRINCIPAL]
+    if destinatario_promotor:
+        destinatarios.append(destinatario_promotor)
+
+    smtp_password = st.secrets.get("SMTP_PASSWORD", "")
+    if not smtp_password:
+        return False, "Senha SMTP não configurada nos Secrets."
+
+    assunto = f"[Minassal KM] Relatório Finalizado - Semana {semana_num} - {promotor_nome}"
+    
+    html_detalhes = ""
+    for d in payload_dados.get("detalhes", []):
+        html_detalhes += f"<li><b>{d['dia']} ({d['data']}):</b> Situação: {d['sit']} | KM Rodado: {float_para_str_br(d['km'])} km</li>"
+
+    html_gastos = ""
+    for g in payload_dados.get("gastos_extras", []):
+        html_gastos += f"<li>{g['desc']}: R$ {float_para_str_br(g['valor'])}</li>"
+    if not html_gastos:
+        html_gastos = "<li>Nenhum gasto extra registrado.</li>"
+
+    corpo_html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333;">
+        <h2 style="color: #1B5E20;">Minassal - Fechamento de KM e Reembolso</h2>
+        <p><b>Promotor(a):</b> {promotor_nome}</p>
+        <p><b>Semana de Referência:</b> Semana {semana_num} ({intervalo})</p>
+        <hr/>
+        <h3>Resumo Financeiro</h3>
+        <ul>
+          <li><b>KM Total Rodado:</b> {float_para_str_br(payload_dados['km_total'])} km</li>
+          <li><b>Reembolso KM:</b> R$ {float_para_str_br(payload_dados['valor_km'])}</li>
+          <li><b>Gastos Extras:</b> R$ {float_para_str_br(payload_dados['valor_extras'])}</li>
+          <li><b>Total a Receber:</b> R$ {float_para_str_br(payload_dados['valor_total'])}</li>
+        </ul>
+        <h3>Gastos Extras</h3>
+        <ul>{html_gastos}</ul>
+        <h3>Detalhamento Diário</h3>
+        <ul>{html_detalhes}</ul>
+        <p style="font-size: 11px; color: #777; margin-top: 20px;">E-mail automático enviado pelo sistema de Controle de KM da Minassal.</p>
+      </body>
+    </html>
+    """
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = assunto
+    msg["From"] = EMAIL_REMETENTE
+    msg["To"] = ", ".join(destinatarios)
+    msg.attach(MIMEText(corpo_html, "html"))
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL_REMETENTE, smtp_password)
+        server.sendmail(EMAIL_REMETENTE, destinatarios, msg.as_string())
+        server.quit()
+        return True, "E-mail enviado com sucesso!"
+    except Exception as e:
+        return False, str(e)
 
 # ==============================================================================
 # TELA DE IDENTIFICAÇÃO (QUEM É VOCÊ?)
@@ -591,7 +652,7 @@ for i, dia_nome in enumerate(dias_semana):
         if dia_eh_normal and clientes_dia_selecionados and not df_atendidos.empty:
             with st.expander(f"📍 Lojas Selecionadas ({len(clientes_dia_selecionados)})", expanded=True):
                 for _, row in df_atendidos.iterrows():
-                    st.markdown(f"• **{row['NOME']}**  \n  🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
+                    st.markdown(f"• **{row['NOME']}** \n 🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
 
             df_coords = df_atendidos.dropna(subset=["lat", "lon"]).copy()
 
@@ -612,7 +673,7 @@ for i, dia_nome in enumerate(dias_semana):
                     "ScatterplotLayer",
                     data=df_coords,
                     get_position=["lon", "lat"],
-                    get_color=[253, 216, 24, 230],  # Amarelo ouro nas paradas
+                    get_color=[253, 216, 24, 230], 
                     get_radius=500,
                     pickable=True
                 )
@@ -631,7 +692,7 @@ for i, dia_nome in enumerate(dias_semana):
                     data=pd.DataFrame(linhas_circuito),
                     get_source_position="origem",
                     get_target_position="destino",
-                    get_color=[255, 255, 255, 160],  # Linhas brancas de alta visibilidade
+                    get_color=[255, 255, 255, 160], 
                     get_width=3
                 )
 
@@ -745,8 +806,13 @@ if not esta_finalizado:
                 mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
             )
             if sucesso:
+                # Tentar enviar e-mail ao finalizar
+                ok_email, msg_email = enviar_email_resumo(promotor_sel, num_semana, intervalo_str, payload)
+                if ok_email:
+                    st.success("Semana finalizada, bloqueada e e-mail enviado com sucesso!")
+                else:
+                    st.warning(f"Semana finalizada no GitHub, mas houve um erro ao enviar o e-mail: {msg_email}")
                 st.balloons()
-                st.success("Semana finalizada e bloqueada com sucesso!")
                 st.rerun()
 else:
     st.info("ℹ️ Para realizar qualquer edição, clique em '🔓 REABRIR PARA CORREÇÃO' no topo da tela.")
