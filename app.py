@@ -6,12 +6,19 @@ import base64
 import os
 import glob
 import math
+import random
 import unicodedata
 import pydeck as pdk
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from email.mime.base import MIMEBase
+from email import encoders
 from datetime import datetime, timedelta
+from reportlab.lib.pagesizes import A4
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib import colors
 
 # ==============================================================================
 # CONFIGURAÇÃO DA PÁGINA (TEMA DARK + AMARELO OURO)
@@ -23,23 +30,17 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# Estilização visual inspirada na identidade de alto contraste
 st.markdown("""
     <style>
-    /* Fundo geral preto profundo */
     .stApp {
         background-color: #050505;
         color: #EDEDED;
     }
-    
-    /* Cabeçalhos em branco absoluto e caixa alta */
     h1, h2, h3, h4 {
         color: #FFFFFF !important;
         font-weight: 900 !important;
         letter-spacing: 0.5px;
     }
-    
-    /* Botões principais no estilo amarelo ouro com texto preto */
     .stButton>button {
         width: 100%;
         background-color: #FDD818 !important;
@@ -58,8 +59,6 @@ st.markdown("""
         color: #000000 !important;
         transform: translateY(-1px);
     }
-    
-    /* Estilização dos acordeões (Expanders) */
     div[data-testid="stExpander"] {
         background-color: #121212 !important;
         border: 1px solid #242424 !important;
@@ -73,23 +72,17 @@ st.markdown("""
     div[data-testid="stExpander"] summary:hover {
         color: #FDD818 !important;
     }
-
-    /* Inputs de texto e selects */
     .stTextInput input, .stSelectbox [data-baseweb="select"] {
         background-color: #1A1A1A !important;
         color: #FFFFFF !important;
         border: 1px solid #333333 !important;
         border-radius: 4px !important;
     }
-    
-    /* Multiselect tags */
     span[data-baseweb="tag"] {
         background-color: #FDD818 !important;
         color: #000000 !important;
         font-weight: bold !important;
     }
-
-    /* Cards de métricas */
     div[data-testid="stMetricValue"] {
         color: #FDD818 !important;
         font-weight: 900 !important;
@@ -155,6 +148,8 @@ SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico
 NOME_PLANILHA_CLIENTES = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
 EMAIL_PRINCIPAL = "benedito.bandola@minassal.com.br"
 EMAIL_REMETENTE = "beneditobandola@gmail.com"
+VALOR_KM_TAXA = 1.17
+ARQUIVO_JSON_GERAL = "historico_km_geral.json"
 
 # ==============================================================================
 # AUXILIARES DE FORMATAÇÃO E CÁLCULOS
@@ -213,9 +208,94 @@ def estimar_km_circuito_completo(lat_casa, lon_casa, pontos_lojas):
     return dist_total * 1.28
 
 # ==============================================================================
-# FUNÇÃO DE ENVIO DE E-MAIL SMTP
+# GERAÇÃO DO PDF EXECUTIVO (MODELO MINASSAL)
 # ==============================================================================
-def enviar_email_resumo(promotor_nome, semana_num, intervalo, payload_dados):
+def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminho_pdf_saida):
+    doc = SimpleDocTemplate(caminho_pdf_saida, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    
+    is_teste = payload_dados.get("is_teste", False)
+    titulo_sufixo = " [TESTE / SIMULAÇÃO]" if is_teste else ""
+
+    estilo_titulo = ParagraphStyle('T', fontName='Helvetica-Bold', fontSize=14, textColor=colors.HexColor('#1B5E20'), alignment=1)
+    estilo_sub = ParagraphStyle('S', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#333333'), alignment=1)
+    estilo_th = ParagraphStyle('TH', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=1)
+    estilo_td = ParagraphStyle('TD', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#222222'), alignment=1)
+    estilo_td_l = ParagraphStyle('TDL', parent=estilo_td, alignment=0)
+
+    elementos = []
+    elementos.append(Paragraph(f"MINASSAL CONTROLE DE REEMBOLSO{titulo_sufixo}", estilo_titulo))
+    elementos.append(Spacer(1, 4))
+    elementos.append(Paragraph(f"RESUMO FINANCEIRO — Semana {semana_num} de {datetime.now().year}", estilo_sub))
+    elementos.append(Spacer(1, 4))
+    elementos.append(Paragraph(f"<b>Promotor(a):</b> {promotor_nome}", ParagraphStyle('P', fontName='Helvetica', fontSize=9, textColor=colors.HexColor('#444444'))))
+    elementos.append(Spacer(1, 8))
+    elementos.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#1B5E20'), spaceAfter=10))
+
+    tabela_dados = [[
+        Paragraph("DATA", estilo_th),
+        Paragraph("SITUAÇÃO", estilo_th),
+        Paragraph("KM RODADO", estilo_th),
+        Paragraph("REEMBOLSO", estilo_th),
+    ]]
+
+    for d in payload_dados.get("detalhes", []):
+        km_d = d.get("km", 0.0)
+        reemb_d = km_d * VALOR_KM_TAXA
+        tabela_dados.append([
+            Paragraph(d.get("data", ""), estilo_td),
+            Paragraph(d.get("sit", "Normal"), estilo_td),
+            Paragraph(f"{float_para_str_br(km_d)}", estilo_td),
+            Paragraph(f"R$ {float_para_str_br(reemb_d)}", estilo_td),
+        ])
+
+    t = Table(tabela_dados, colWidths=[100, 150, 110, 143])
+    t.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1B5E20')),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#FAFAFA')),
+    ]))
+    elementos.append(t)
+    elementos.append(Spacer(1, 15))
+
+    elementos.append(Paragraph("<b>DESPESAS EXTRAS REEMBOLSÁVEIS:</b>", ParagraphStyle('DE', fontName='Helvetica-Bold', fontSize=9.5, textColor=colors.HexColor('#1B5E20'))))
+    elementos.append(Spacer(1, 5))
+
+    gastos = payload_dados.get("gastos_extras", [])
+    if gastos:
+        tabela_gastos = [[Paragraph("DESCRIÇÃO", estilo_th), Paragraph("VALOR", estilo_th)]]
+        for g in gastos:
+            tabela_gastos.append([
+                Paragraph(g.get("desc", ""), estilo_td_l),
+                Paragraph(f"R$ {float_para_str_br(g.get('valor', 0.0))}", estilo_td),
+            ])
+        tg = Table(tabela_gastos, colWidths=[350, 153])
+        tg.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+        ]))
+        elementos.append(tg)
+    else:
+        elementos.append(Paragraph("Nenhuma despesa extra registrada.", ParagraphStyle('NDE', fontName='Helvetica-Oblique', fontSize=8.5, textColor=colors.HexColor('#666666'))))
+
+    elementos.append(Spacer(1, 20))
+
+    total_geral = payload_dados.get("valor_total", 0.0)
+    estilo_total = ParagraphStyle('TOT', fontName='Helvetica-Bold', fontSize=12, textColor=colors.HexColor('#1B5E20'), alignment=2)
+    elementos.append(Paragraph(f"VALOR TOTAL A PAGAR: R$ {float_para_str_br(total_geral)}", estilo_total))
+
+    doc.build(elementos)
+
+# ==============================================================================
+# FUNÇÃO DE ENVIO DE E-MAIL COM ANEXO PDF
+# ==============================================================================
+def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     destinatario_promotor = DADOS_PROMOTORES.get(promotor_nome, {}).get("email", "")
     destinatarios = [EMAIL_PRINCIPAL]
     if destinatario_promotor:
@@ -225,46 +305,43 @@ def enviar_email_resumo(promotor_nome, semana_num, intervalo, payload_dados):
     if not smtp_password:
         return False, "Senha SMTP não configurada nos Secrets."
 
-    assunto = f"[Minassal KM] Relatório Finalizado - Semana {semana_num} - {promotor_nome}"
+    is_teste = payload_dados.get("is_teste", False)
+    sufixo_assunto = " [TESTE]" if is_teste else ""
+
+    nome_arq_pdf = f"Resumo_Financeiro_Semana_{semana_num}_{promotor_nome.replace(' ', '_')}.pdf"
+    gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, nome_arq_pdf)
+
+    assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {semana_num} - {promotor_nome}"
     
-    html_detalhes = ""
-    for d in payload_dados.get("detalhes", []):
-        html_detalhes += f"<li><b>{d['dia']} ({d['data']}):</b> Situação: {d['sit']} | KM Rodado: {float_para_str_br(d['km'])} km</li>"
-
-    html_gastos = ""
-    for g in payload_dados.get("gastos_extras", []):
-        html_gastos += f"<li>{g['desc']}: R$ {float_para_str_br(g['valor'])}</li>"
-    if not html_gastos:
-        html_gastos = "<li>Nenhum gasto extra registrado.</li>"
-
     corpo_html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333;">
-        <h2 style="color: #1B5E20;">Minassal - Fechamento de KM e Reembolso</h2>
+        <h2 style="color: #1B5E20;">Minassal - Fechamento de KM e Reembolso {sufixo_assunto}</h2>
         <p><b>Promotor(a):</b> {promotor_nome}</p>
-        <p><b>Semana de Referência:</b> Semana {semana_num} ({intervalo})</p>
+        <p><b>Semana de Referência:</b> Semana {num_semana} ({intervalo})</p>
         <hr/>
-        <h3>Resumo Financeiro</h3>
-        <ul>
-          <li><b>KM Total Rodado:</b> {float_para_str_br(payload_dados['km_total'])} km</li>
-          <li><b>Reembolso KM:</b> R$ {float_para_str_br(payload_dados['valor_km'])}</li>
-          <li><b>Gastos Extras:</b> R$ {float_para_str_br(payload_dados['valor_extras'])}</li>
-          <li><b>Total a Receber:</b> R$ {float_para_str_br(payload_dados['valor_total'])}</li>
-        </ul>
-        <h3>Gastos Extras</h3>
-        <ul>{html_gastos}</ul>
-        <h3>Detalhamento Diário</h3>
-        <ul>{html_detalhes}</ul>
+        <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM, rotas e despesas extras.</p>
+        <p><b>Valor Total a Pagar: R$ {float_para_str_br(payload_dados['valor_total'])}</b></p>
         <p style="font-size: 11px; color: #777; margin-top: 20px;">E-mail automático enviado pelo sistema de Controle de KM da Minassal.</p>
       </body>
     </html>
     """
 
-    msg = MIMEMultipart("alternative")
+    msg = MIMEMultipart()
     msg["Subject"] = assunto
     msg["From"] = EMAIL_REMETENTE
     msg["To"] = ", ".join(destinatarios)
     msg.attach(MIMEText(corpo_html, "html"))
+
+    try:
+        with open(nome_arq_pdf, "rb") as f:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f"attachment; filename= {nome_arq_pdf}")
+        msg.attach(part)
+    except Exception as e:
+        return False, f"Erro ao anexar PDF: {e}"
 
     try:
         server = smtplib.SMTP("smtp.gmail.com", 587)
@@ -272,32 +349,11 @@ def enviar_email_resumo(promotor_nome, semana_num, intervalo, payload_dados):
         server.login(EMAIL_REMETENTE, smtp_password)
         server.sendmail(EMAIL_REMETENTE, destinatarios, msg.as_string())
         server.quit()
-        return True, "E-mail enviado com sucesso!"
+        if os.path.exists(nome_arq_pdf):
+            os.remove(nome_arq_pdf)
+        return True, "E-mail com PDF enviado com sucesso!"
     except Exception as e:
         return False, str(e)
-
-# ==============================================================================
-# TELA DE IDENTIFICAÇÃO (QUEM É VOCÊ?)
-# ==============================================================================
-if "usuario_ativo" not in st.session_state:
-    st.session_state.usuario_ativo = None
-
-if not st.session_state.usuario_ativo:
-    st.markdown("<h1 style='text-align: center; color: #FDD818 !important;'># ACESSO DE PROMOTORES</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #888;'>SELECIONE SEU PERFIL PARA INICIAR O REGISTRO</p>", unsafe_allow_html=True)
-    
-    escolha_promotor = st.selectbox(
-        "QUEM É VOCÊ?",
-        options=["-- Selecione seu nome --"] + PROMOTORES
-    )
-    
-    if st.button("ACESSAR SISTEMA ➔", type="primary"):
-        if escolha_promotor != "-- Selecione seu nome --":
-            st.session_state.usuario_ativo = escolha_promotor
-            st.rerun()
-        else:
-            st.warning("Por favor, selecione seu nome na lista antes de prosseguir.")
-    st.stop()
 
 # ==============================================================================
 # CARREGAMENTO DA BASE DE CLIENTES E VENDAS
@@ -305,7 +361,6 @@ if not st.session_state.usuario_ativo:
 @st.cache_data(ttl=1800)
 def carregar_base_cruzada():
     arqs = glob.glob("*.xlsx")
-
     caminho_cli = NOME_PLANILHA_CLIENTES
     if caminho_cli not in arqs and arqs:
         for a in arqs:
@@ -345,7 +400,6 @@ def carregar_base_cruzada():
         return df_cli
 
     caminho_vendas = max(candidatos_cubo, key=os.path.getmtime)
-
     try:
         df_vendas = pd.read_excel(caminho_vendas, sheet_name=0)
         df_vendas = df_vendas.dropna(subset=["CLIENTE CODIGO", "TOTAL VALOR"]).copy()
@@ -368,22 +422,8 @@ if not DF_CLIENTES.empty:
         cidade_str = f" ({r['CIDADE_RAW']}/{r['UF']})" if r['CIDADE_RAW'] else ""
         MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']}{bairro_str}{cidade_str}"
 
-usuario_logado = st.session_state.usuario_ativo
-dados_promotor_atual = DADOS_PROMOTORES.get(usuario_logado, {})
-cidades_definidas = dados_promotor_atual.get("cidades", [])
-cidades_norm_promotor = [normalizar_texto(c) for c in cidades_definidas]
-
-if not DF_CLIENTES.empty:
-    todas_cidades_norm = sorted(list(DF_CLIENTES["CIDADE_NORM"].unique()))
-    if cidades_norm_promotor:
-        cidades_disponiveis_promotor = [c for c in cidades_norm_promotor if c in todas_cidades_norm]
-    else:
-        cidades_disponiveis_promotor = todas_cidades_norm
-else:
-    cidades_disponiveis_promotor = []
-
 # ==============================================================================
-# INTEGRAÇÃO COM GITHUB
+# INTEGRAÇÃO COM GITHUB (JSON CENTRALIZADO)
 # ==============================================================================
 def get_github_credentials():
     try:
@@ -395,12 +435,12 @@ def get_github_credentials():
     except Exception:
         return None, None, None
 
-def carregar_dados_github(caminho_arquivo):
+def carregar_base_historico_github():
     token, repo, branch = get_github_credentials()
     if not token or not repo:
-        return None, None
+        return {}, None
 
-    url = f"https://api.github.com/repos/{repo}/contents/{caminho_arquivo}?ref={branch}"
+    url = f"https://api.github.com/repos/{repo}/contents/{ARQUIVO_JSON_GERAL}?ref={branch}"
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
     
     try:
@@ -413,18 +453,18 @@ def carregar_dados_github(caminho_arquivo):
             return conteudo_json, sha
     except requests.RequestException:
         pass
-    return None, None
+    return {}, None
 
-def salvar_dados_github(caminho_arquivo, dados_dict, sha_existente=None, mensagem_commit="Atualização de KM"):
+def salvar_base_historico_github(historico_dict, sha_existente=None, mensagem_commit="Atualização geral de KM"):
     token, repo, branch = get_github_credentials()
     if not token or not repo:
         st.error("Credenciais do GitHub não configuradas nos Secrets do Streamlit!")
         return False
 
-    url = f"https://api.github.com/repos/{repo}/contents/{caminho_arquivo}"
+    url = f"https://api.github.com/repos/{repo}/contents/{ARQUIVO_JSON_GERAL}"
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
 
-    conteudo_json_str = json.dumps(dados_dict, indent=4, ensure_ascii=False)
+    conteudo_json_str = json.dumps(historico_dict, indent=4, ensure_ascii=False)
     conteudo_base64 = base64.b64encode(conteudo_json_str.encode('utf-8')).decode('utf-8')
 
     payload = {
@@ -442,14 +482,61 @@ def salvar_dados_github(caminho_arquivo, dados_dict, sha_existente=None, mensage
         st.error(f"Erro ao salvar dados no GitHub: {e}")
         return False
 
+HISTORICO_GERAL, SHA_GERAL = carregar_base_historico_github()
+
+# ==============================================================================
+# TELA DE IDENTIFICAÇÃO (COM OPÇÃO DE ÁREA DE TESTES)
+# ==============================================================================
+if "usuario_ativo" not in st.session_state:
+    st.session_state.usuario_ativo = None
+
+if not st.session_state.usuario_ativo:
+    st.markdown("<h1 style='text-align: center; color: #FDD818 !important;'># ACESSO DE PROMOTORES</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #888;'>SELECIONE SEU PERFIL OU ENTRE NA ÁREA DE TESTES</p>", unsafe_allow_html=True)
+    
+    opcoes_acesso = ["-- Selecione seu perfil ou área --", "🧪 [ÁREA DE TESTES / SIMULAÇÃO]"] + PROMOTORES
+    escolha_promotor = st.selectbox("QUEM É VOCÊ?", options=opcoes_acesso)
+    
+    if st.button("ACESSAR SISTEMA ➔", type="primary"):
+        if escolha_promotor != "-- Selecione seu perfil ou área --":
+            st.session_state.usuario_ativo = escolha_promotor
+            st.rerun()
+        else:
+            st.warning("Por favor, selecione uma opção antes de prosseguir.")
+    st.stop()
+
+promotor_sel = st.session_state.usuario_ativo
+is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
+
+if is_area_teste:
+    # Definir promotor padrão para simulação na área de testes
+    promotor_simulado = "Pamela Camila de Almeida Alexandrino"
+    dados_promotor_atual = DADOS_PROMOTORES[promotor_simulado]
+else:
+    promotor_simulado = promotor_sel
+    dados_promotor_atual = DADOS_PROMOTORES.get(promotor_sel, {})
+
+cidades_definidas = dados_promotor_atual.get("cidades", [])
+cidades_norm_promotor = [normalizar_texto(c) for c in cidades_definidas]
+
+if not DF_CLIENTES.empty:
+    todas_cidades_norm = sorted(list(DF_CLIENTES["CIDADE_NORM"].unique()))
+    if cidades_norm_promotor:
+        cidades_disponiveis_promotor = [c for c in cidades_norm_promotor if c in todas_cidades_norm]
+    else:
+        cidades_disponiveis_promotor = todas_cidades_norm
+else:
+    cidades_disponiveis_promotor = []
+
 # ==============================================================================
 # CABEÇALHO DO APLICATIVO
 # ==============================================================================
-promotor_sel = st.session_state.usuario_ativo
-
 col_tit, col_sair = st.columns([3, 1])
 with col_tit:
-    st.markdown("<h2 style='color:#FDD818 !important; margin:0;'># CONTROLE DE KM</h2>", unsafe_allow_html=True)
+    if is_area_teste:
+        st.markdown("<h2 style='color:#FDD818 !important; margin:0;'># ÁREA DE TESTES [SIMULAÇÃO]</h2>", unsafe_allow_html=True)
+    else:
+        st.markdown("<h2 style='color:#FDD818 !important; margin:0;'># CONTROLE DE KM</h2>", unsafe_allow_html=True)
 with col_sair:
     st.write("")
     if st.button("TROCAR 🔄"):
@@ -457,7 +544,10 @@ with col_sair:
         st.session_state.clear()
         st.rerun()
 
-st.markdown(f"**PROMOTOR(A):** {promotor_sel}")
+if is_area_teste:
+    st.markdown(f"**MODO:** Simulação de Teste (Utilizando perfil de: *{promotor_simulado}*)")
+else:
+    st.markdown(f"**PROMOTOR(A):** {promotor_sel}")
 st.caption(f"🏠 {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
 
 semana_atual_default = int(datetime.now().isocalendar()[1])
@@ -467,29 +557,123 @@ segunda, domingo = calcular_intervalo_semana(num_semana)
 intervalo_str = f"{segunda.strftime('%d/%m')} a {domingo.strftime('%d/%m')}"
 st.markdown(f"<div style='padding:6px 12px; background:#141414; border-left:4px solid #FDD818; margin-bottom:15px;'>📅 <b>PERÍODO:</b> Semana {num_semana} ({intervalo_str})</div>", unsafe_allow_html=True)
 
-nome_prom_limpo = promotor_sel.replace(" ", "_")
-caminho_github = f"dados_promotores/S{num_semana}_{nome_prom_limpo}.json"
+chave_registro = f"{promotor_sel}_S{num_semana}"
+dados_salvos = HISTORICO_GERAL.get(chave_registro, None)
 
-dados_salvos, sha_arquivo = carregar_dados_github(caminho_github)
+# ==============================================================================
+# PAINEL DE GESTÃO E EXCLUSÃO DE LANÇAMENTOS (LIBERDADE PARA APAGAR TESTES)
+# ==============================================================================
+with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS", expanded=False):
+    st.markdown("Selecione um lançamento cadastrado no histórico geral para excluí-lo (ideal para limpar testes):")
+    semanas_cadastradas = list(HISTORICO_GERAL.keys())
+    if semanas_cadastradas:
+        chave_para_apagar = st.selectbox("Lançamento cadastrado:", semanas_cadastradas)
+        if st.button("🗑️ APAGAR ESTE LANÇAMENTO SELECIONADO"):
+            del HISTORICO_GERAL[chave_para_apagar]
+            sucesso_del = salvar_base_historico_github(
+                HISTORICO_GERAL, 
+                sha_existente=SHA_GERAL, 
+                mensagem_commit=f"Removido lançamento {chave_para_apagar}"
+            )
+            if sucesso_del:
+                st.success(f"Lançamento {chave_para_apagar} apagado com sucesso!")
+                st.rerun()
+    else:
+        st.info("Nenhum lançamento no histórico.")
+
+# ==============================================================================
+# BOTÃO DE GERAR SEMANA FICTÍCIA (EXCLUSIVO NA ÁREA DE TESTES)
+# ==============================================================================
+if is_area_teste:
+    st.markdown("### 🧪 GERADOR DE TESTE AUTOMÁTICO")
+    st.info("Clique no botão abaixo para preencher automaticamente uma semana fictícia completa com lojas reais da cidade, quilometragem e despesas, testando a geração do PDF e o envio imediato por e-mail.")
+    if st.button("⚡ DISPARAR TESTE FICTÍCIO AGORA"):
+        dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+        detalhes_ficticios = []
+        km_tot_fict = 0.0
+        km_base = 100.0
+
+        for idx_d, d_nome in enumerate(dias_semana):
+            dt_d = (segunda + timedelta(days=idx_d)).strftime("%d/%m")
+            sit_f = "Normal" if idx_d not in [5, 6] else "Folga"
+            cli_f = []
+            km_d_f = 0.0
+            kmi_f = km_base
+            kmf_f = km_base
+
+            if sit_f == "Normal" and not DF_CLIENTES.empty:
+                df_prom = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"].isin(cidades_norm_promotor)]
+                if df_prom.empty:
+                    df_prom = DF_CLIENTES
+                amostra = df_prom.sample(n=min(3, len(df_prom)))
+                cli_f = amostra["CÓDIGO"].tolist()
+                km_d_f = round(random.uniform(45.0, 95.0), 1)
+                kmf_f = kmi_f + km_d_f
+                km_base = kmf_f
+
+            detalhes_ficticios.append({
+                "dia": d_nome,
+                "data": dt_d,
+                "km": km_d_f,
+                "sit": sit_f,
+                "clientes": cli_f,
+                "leitura": True,
+                "km_ini": kmi_f,
+                "km_fim": kmf_f
+            })
+            km_tot_fict += km_d_f
+
+        gastos_fict = [{"desc": "Almoço de Teste", "valor": 42.50}, {"desc": "Estacionamento", "valor": 15.00}]
+        v_km_fict = km_tot_fict * VALOR_KM_TAXA
+        v_ext_fict = sum(g["valor"] for g in gastos_fict)
+        v_tot_fict = v_km_fict + v_ext_fict
+
+        payload_teste = {
+            "id": int(datetime.now().timestamp()),
+            "semana_ref": str(num_semana),
+            "intervalo_datas": intervalo_str,
+            "promotor": promotor_simulado,
+            "status": "FINALIZADO",
+            "is_teste": True,
+            "km_total": km_tot_fict,
+            "valor_km": v_km_fict,
+            "valor_extras": v_ext_fict,
+            "valor_total": v_tot_fict,
+            "gastos_extras": gastos_fict,
+            "detalhes": detalhes_ficticios
+        }
+
+        HISTORICO_GERAL[chave_registro] = payload_teste
+        ok_salvar = salvar_base_historico_github(HISTORICO_GERAL, sha_existente=SHA_GERAL, mensagem_commit=f"Teste fictício S{num_semana} - {promotor_simulado}")
+        if ok_salvar:
+            ok_mail, msg_mail = enviar_email_com_pdf(promotor_simulado, num_semana, intervalo_str, payload_teste)
+            if ok_mail:
+                st.success("✅ Teste executado com sucesso! O PDF foi gerado e enviado para o seu e-mail.")
+            else:
+                st.warning(f"Salvo no JSON, mas falhou ao enviar e-mail: {msg_mail}")
+            st.balloons()
+
+st.divider()
 
 esta_finalizado = False
 if dados_salvos and dados_salvos.get("status") == "FINALIZADO":
     esta_finalizado = True
-    st.success("🔒 **SEMANA FINALIZADA E TRANSMITIDA.** Todos os campos estão bloqueados.")
+    is_t = dados_salvos.get("is_teste", False)
+    txt_t = " [TESTE]" if is_t else ""
+    st.success(f"🔒 **SEMANA FINALIZADA E TRANSMITIDA{txt_t}.** Todos os campos estão bloqueados.")
     if st.button("🔓 REABRIR PARA CORREÇÃO"):
-        sucesso_reabrir = salvar_dados_github(
-            caminho_github,
-            {**dados_salvos, "status": "RASCUNHO"},
-            sha_existente=sha_arquivo,
-            mensagem_commit=f"Reaberto para edição S{num_semana} - {promotor_sel}"
+        dados_salvos["status"] = "RASCUNHO"
+        HISTORICO_GERAL[chave_registro] = dados_salvos
+        sucesso_reabrir = salvar_base_historico_github(
+            HISTORICO_GERAL,
+            sha_existente=SHA_GERAL,
+            mensagem_commit=f"Reaberto para edição S{num_semana}"
         )
         if sucesso_reabrir:
             st.success("Semana destravada com sucesso!")
             st.rerun()
 elif dados_salvos:
     st.warning("📝 Rascunho salvo em aberto. Edição liberada.")
-
-st.divider()
 
 # ==============================================================================
 # REGISTROS DIÁRIOS
@@ -754,7 +938,6 @@ for idx in range(qtd_gastos):
 st.divider()
 st.markdown("### 📊 FECHAMENTO DA SEMANA")
 
-VALOR_KM_TAXA = 1.17
 valor_total_km = km_total_calculado * VALOR_KM_TAXA
 valor_extras_total = sum(g["valor"] for g in gastos_extras)
 valor_total_reembolso = valor_total_km + valor_extras_total
@@ -769,8 +952,9 @@ def construir_payload(status_envio):
         "id": int(datetime.now().timestamp()),
         "semana_ref": str(num_semana),
         "intervalo_datas": intervalo_str,
-        "promotor": promotor_sel,
+        "promotor": promotor_simulado,
         "status": status_envio,
+        "is_teste": is_area_teste,
         "km_total": km_total_calculado,
         "valor_km": valor_total_km,
         "valor_extras": valor_extras_total,
@@ -786,11 +970,11 @@ if not esta_finalizado:
     with col_btn1:
         if st.button("SALVAR RASCUNHO 💾"):
             payload = construir_payload("RASCUNHO")
-            sucesso = salvar_dados_github(
-                caminho_github, 
-                payload, 
-                sha_existente=sha_arquivo,
-                mensagem_commit=f"Rascunho S{num_semana} - {promotor_sel}"
+            HISTORICO_GERAL[chave_registro] = payload
+            sucesso = salvar_base_historico_github(
+                HISTORICO_GERAL, 
+                sha_existente=SHA_GERAL,
+                mensagem_commit=f"Rascunho S{num_semana} - {promotor_simulado}"
             )
             if sucesso:
                 st.success("Rascunho salvo com sucesso!")
@@ -799,17 +983,16 @@ if not esta_finalizado:
     with col_btn2:
         if st.button("FINALIZAR SEMANA 🚀", type="primary"):
             payload = construir_payload("FINALIZADO")
-            sucesso = salvar_dados_github(
-                caminho_github, 
-                payload, 
-                sha_existente=sha_arquivo,
-                mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
+            HISTORICO_GERAL[chave_registro] = payload
+            sucesso = salvar_base_historico_github(
+                HISTORICO_GERAL, 
+                sha_existente=SHA_GERAL,
+                mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_simulado}"
             )
             if sucesso:
-                # Tentar enviar e-mail ao finalizar
-                ok_email, msg_email = enviar_email_resumo(promotor_sel, num_semana, intervalo_str, payload)
+                ok_email, msg_email = enviar_email_com_pdf(promotor_simulado, num_semana, intervalo_str, payload)
                 if ok_email:
-                    st.success("Semana finalizada, bloqueada e e-mail enviado com sucesso!")
+                    st.success("Semana finalizada, bloqueada e e-mail com PDF executivo enviado com sucesso!")
                 else:
                     st.warning(f"Semana finalizada no GitHub, mas houve um erro ao enviar o e-mail: {msg_email}")
                 st.balloons()
