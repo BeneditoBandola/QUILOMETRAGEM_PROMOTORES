@@ -1,0 +1,96 @@
+{
+    "id": 1789402128,
+    "semana_ref": "1",
+    "intervalo_datas": "29/12 a 04/01",
+    "promotor": "Pamela Camila de Almeida Alexandrino",
+    "status": "RASCUNHO",
+    "km_total": 58.2,
+    "valor_km": 68.094,
+    "valor_extras": 12.0,
+    "valor_total": 80.094,
+    "gastos_extras": [
+        {
+            "desc": "impressão",
+            "valor": 12.0
+        }
+    ],
+    "detalhes": [
+        {
+            "dia": "Segunda",
+            "data": "29/12",
+            "km": 58.2,
+            "sit": "Normal",
+            "clientes": [
+                "5595",
+                "2659",
+                "15715",
+                "13766",
+                "9587",
+                "2428"
+            ],
+            "leitura": false,
+            "km_ini": 0.0,
+            "km_fim": 58.2
+        },
+        {
+            "dia": "Terça",
+            "data": "30/12",
+            "km": 0.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 0.0,
+            "km_fim": 0.0
+        },
+        {
+            "dia": "Quarta",
+            "data": "31/12",
+            "km": 0.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 0.0,
+            "km_fim": 0.0
+        },
+        {
+            "dia": "Quinta",
+            "data": "01/01",
+            "km": 0.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 0.0,
+            "km_fim": 0.0
+        },
+        {
+            "dia": "Sexta",
+            "data": "02/01",
+            "km": 0.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 0.0,
+            "km_fim": 0.0
+        },
+        {
+            "dia": "Sábado",
+            "data": "03/01",
+            "km": 0.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 0.0,
+            "km_fim": 0.0
+        },
+        {
+            "dia": "Domingo",
+            "data": "04/01",
+            "km": 0.0,
+            "sit": "Normal",
+            "clientes": [],
+            "leitura": false,
+            "km_ini": 0.0,
+            "km_fim": 0.0
+        }
+    ]
+}
