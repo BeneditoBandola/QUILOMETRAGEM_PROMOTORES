@@ -1,13 +1,13 @@
 {
-    "id": 1789402128,
+    "id": 1789402234,
     "semana_ref": "1",
     "intervalo_datas": "29/12 a 04/01",
     "promotor": "Pamela Camila de Almeida Alexandrino",
     "status": "RASCUNHO",
-    "km_total": 58.2,
-    "valor_km": 68.094,
+    "km_total": 276.2,
+    "valor_km": 323.15399999999994,
     "valor_extras": 12.0,
-    "valor_total": 80.094,
+    "valor_total": 335.15399999999994,
     "gastos_extras": [
         {
             "desc": "impressão",
@@ -36,7 +36,7 @@
             "dia": "Terça",
             "data": "30/12",
             "km": 0.0,
-            "sit": "Normal",
+            "sit": "Carro Quebrado",
             "clientes": [],
             "leitura": false,
             "km_ini": 0.0,
@@ -46,7 +46,7 @@
             "dia": "Quarta",
             "data": "31/12",
             "km": 0.0,
-            "sit": "Normal",
+            "sit": "Atestado Médico",
             "clientes": [],
             "leitura": false,
             "km_ini": 0.0,
@@ -55,28 +55,35 @@
         {
             "dia": "Quinta",
             "data": "01/01",
-            "km": 0.0,
+            "km": 90.0,
             "sit": "Normal",
-            "clientes": [],
+            "clientes": [
+                "6742",
+                "4214"
+            ],
             "leitura": false,
             "km_ini": 0.0,
-            "km_fim": 0.0
+            "km_fim": 90.0
         },
         {
             "dia": "Sexta",
             "data": "02/01",
-            "km": 0.0,
+            "km": 128.0,
             "sit": "Normal",
-            "clientes": [],
+            "clientes": [
+                "9528",
+                "2550",
+                "27719"
+            ],
             "leitura": false,
             "km_ini": 0.0,
-            "km_fim": 0.0
+            "km_fim": 128.0
         },
         {
             "dia": "Sábado",
             "data": "03/01",
             "km": 0.0,
-            "sit": "Normal",
+            "sit": "Folga",
             "clientes": [],
             "leitura": false,
             "km_ini": 0.0,
