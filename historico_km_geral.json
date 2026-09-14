@@ -112,5 +112,689 @@
                 "km_fim": 469.09999999999997
             }
         ]
+    },
+    "Pamela Camila de Almeida Alexandrino_S2": {
+        "id": 1789403129,
+        "semana_ref": "2",
+        "intervalo_datas": "05/01 a 11/01",
+        "promotor": "Pamela Camila de Almeida Alexandrino",
+        "status": "FINALIZADO",
+        "is_teste": true,
+        "km_total": 375.5,
+        "valor_km": 439.335,
+        "valor_extras": 57.5,
+        "valor_total": 496.835,
+        "gastos_extras": [
+            {
+                "desc": "Almoço de Teste",
+                "valor": 42.5
+            },
+            {
+                "desc": "Estacionamento",
+                "valor": 15.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "05/01",
+                "km": 70.8,
+                "sit": "Normal",
+                "clientes": [
+                    "6915",
+                    "26491",
+                    "22571"
+                ],
+                "leitura": true,
+                "km_ini": 100.0,
+                "km_fim": 170.8
+            },
+            {
+                "dia": "Terça",
+                "data": "06/01",
+                "km": 91.2,
+                "sit": "Normal",
+                "clientes": [
+                    "15985",
+                    "27738",
+                    "26428"
+                ],
+                "leitura": true,
+                "km_ini": 170.8,
+                "km_fim": 262.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "07/01",
+                "km": 75.9,
+                "sit": "Normal",
+                "clientes": [
+                    "24475",
+                    "6742",
+                    "14544"
+                ],
+                "leitura": true,
+                "km_ini": 262.0,
+                "km_fim": 337.9
+            },
+            {
+                "dia": "Quinta",
+                "data": "08/01",
+                "km": 75.3,
+                "sit": "Normal",
+                "clientes": [
+                    "3355",
+                    "13396",
+                    "26885"
+                ],
+                "leitura": true,
+                "km_ini": 337.9,
+                "km_fim": 413.2
+            },
+            {
+                "dia": "Sexta",
+                "data": "09/01",
+                "km": 62.3,
+                "sit": "Normal",
+                "clientes": [
+                    "17303",
+                    "26658",
+                    "2813"
+                ],
+                "leitura": true,
+                "km_ini": 413.2,
+                "km_fim": 475.5
+            },
+            {
+                "dia": "Sábado",
+                "data": "10/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 475.5,
+                "km_fim": 475.5
+            },
+            {
+                "dia": "Domingo",
+                "data": "11/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 475.5,
+                "km_fim": 475.5
+            }
+        ]
+    },
+    "Fernanda Dias Ferreira_S2": {
+        "id": 1789403131,
+        "semana_ref": "2",
+        "intervalo_datas": "05/01 a 11/01",
+        "promotor": "Fernanda Dias Ferreira",
+        "status": "FINALIZADO",
+        "is_teste": true,
+        "km_total": 317.8,
+        "valor_km": 371.82599999999996,
+        "valor_extras": 57.5,
+        "valor_total": 429.32599999999996,
+        "gastos_extras": [
+            {
+                "desc": "Almoço de Teste",
+                "valor": 42.5
+            },
+            {
+                "desc": "Estacionamento",
+                "valor": 15.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "05/01",
+                "km": 78.4,
+                "sit": "Normal",
+                "clientes": [
+                    "22382",
+                    "21913",
+                    "21921"
+                ],
+                "leitura": true,
+                "km_ini": 100.0,
+                "km_fim": 178.4
+            },
+            {
+                "dia": "Terça",
+                "data": "06/01",
+                "km": 50.8,
+                "sit": "Normal",
+                "clientes": [
+                    "21889",
+                    "24383",
+                    "22328"
+                ],
+                "leitura": true,
+                "km_ini": 178.4,
+                "km_fim": 229.2
+            },
+            {
+                "dia": "Quarta",
+                "data": "07/01",
+                "km": 67.3,
+                "sit": "Normal",
+                "clientes": [
+                    "23814",
+                    "24138",
+                    "25067"
+                ],
+                "leitura": true,
+                "km_ini": 229.2,
+                "km_fim": 296.5
+            },
+            {
+                "dia": "Quinta",
+                "data": "08/01",
+                "km": 68.6,
+                "sit": "Normal",
+                "clientes": [
+                    "24423",
+                    "26825",
+                    "24815"
+                ],
+                "leitura": true,
+                "km_ini": 296.5,
+                "km_fim": 365.1
+            },
+            {
+                "dia": "Sexta",
+                "data": "09/01",
+                "km": 52.7,
+                "sit": "Normal",
+                "clientes": [
+                    "25521",
+                    "23379",
+                    "22349"
+                ],
+                "leitura": true,
+                "km_ini": 365.1,
+                "km_fim": 417.8
+            },
+            {
+                "dia": "Sábado",
+                "data": "10/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 417.8,
+                "km_fim": 417.8
+            },
+            {
+                "dia": "Domingo",
+                "data": "11/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 417.8,
+                "km_fim": 417.8
+            }
+        ]
+    },
+    "Saruete Valeska Stabile de Oliveira_S2": {
+        "id": 1789403132,
+        "semana_ref": "2",
+        "intervalo_datas": "05/01 a 11/01",
+        "promotor": "Saruete Valeska Stabile de Oliveira",
+        "status": "FINALIZADO",
+        "is_teste": true,
+        "km_total": 384.20000000000005,
+        "valor_km": 449.514,
+        "valor_extras": 57.5,
+        "valor_total": 507.014,
+        "gastos_extras": [
+            {
+                "desc": "Almoço de Teste",
+                "valor": 42.5
+            },
+            {
+                "desc": "Estacionamento",
+                "valor": 15.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "05/01",
+                "km": 83.6,
+                "sit": "Normal",
+                "clientes": [
+                    "16884",
+                    "4841",
+                    "27629"
+                ],
+                "leitura": true,
+                "km_ini": 100.0,
+                "km_fim": 183.6
+            },
+            {
+                "dia": "Terça",
+                "data": "06/01",
+                "km": 60.4,
+                "sit": "Normal",
+                "clientes": [
+                    "28049",
+                    "13561",
+                    "19120"
+                ],
+                "leitura": true,
+                "km_ini": 183.6,
+                "km_fim": 244.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "07/01",
+                "km": 94.9,
+                "sit": "Normal",
+                "clientes": [
+                    "8484",
+                    "5016",
+                    "22895"
+                ],
+                "leitura": true,
+                "km_ini": 244.0,
+                "km_fim": 338.9
+            },
+            {
+                "dia": "Quinta",
+                "data": "08/01",
+                "km": 56.7,
+                "sit": "Normal",
+                "clientes": [
+                    "27629",
+                    "7105",
+                    "23715"
+                ],
+                "leitura": true,
+                "km_ini": 338.9,
+                "km_fim": 395.59999999999997
+            },
+            {
+                "dia": "Sexta",
+                "data": "09/01",
+                "km": 88.6,
+                "sit": "Normal",
+                "clientes": [
+                    "26460",
+                    "27367",
+                    "11227"
+                ],
+                "leitura": true,
+                "km_ini": 395.59999999999997,
+                "km_fim": 484.19999999999993
+            },
+            {
+                "dia": "Sábado",
+                "data": "10/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 484.19999999999993,
+                "km_fim": 484.19999999999993
+            },
+            {
+                "dia": "Domingo",
+                "data": "11/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 484.19999999999993,
+                "km_fim": 484.19999999999993
+            }
+        ]
+    },
+    "Carolina Rodrigues Bruno_S2": {
+        "id": 1789403133,
+        "semana_ref": "2",
+        "intervalo_datas": "05/01 a 11/01",
+        "promotor": "Carolina Rodrigues Bruno",
+        "status": "FINALIZADO",
+        "is_teste": true,
+        "km_total": 323.40000000000003,
+        "valor_km": 378.37800000000004,
+        "valor_extras": 57.5,
+        "valor_total": 435.87800000000004,
+        "gastos_extras": [
+            {
+                "desc": "Almoço de Teste",
+                "valor": 42.5
+            },
+            {
+                "desc": "Estacionamento",
+                "valor": 15.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "05/01",
+                "km": 56.0,
+                "sit": "Normal",
+                "clientes": [
+                    "26315",
+                    "26283",
+                    "8372"
+                ],
+                "leitura": true,
+                "km_ini": 100.0,
+                "km_fim": 156.0
+            },
+            {
+                "dia": "Terça",
+                "data": "06/01",
+                "km": 53.5,
+                "sit": "Normal",
+                "clientes": [
+                    "19039",
+                    "26391",
+                    "27278"
+                ],
+                "leitura": true,
+                "km_ini": 156.0,
+                "km_fim": 209.5
+            },
+            {
+                "dia": "Quarta",
+                "data": "07/01",
+                "km": 82.7,
+                "sit": "Normal",
+                "clientes": [
+                    "2691",
+                    "22760",
+                    "7163"
+                ],
+                "leitura": true,
+                "km_ini": 209.5,
+                "km_fim": 292.2
+            },
+            {
+                "dia": "Quinta",
+                "data": "08/01",
+                "km": 81.4,
+                "sit": "Normal",
+                "clientes": [
+                    "23961",
+                    "628",
+                    "15214"
+                ],
+                "leitura": true,
+                "km_ini": 292.2,
+                "km_fim": 373.6
+            },
+            {
+                "dia": "Sexta",
+                "data": "09/01",
+                "km": 49.8,
+                "sit": "Normal",
+                "clientes": [
+                    "12088",
+                    "16558",
+                    "14435"
+                ],
+                "leitura": true,
+                "km_ini": 373.6,
+                "km_fim": 423.40000000000003
+            },
+            {
+                "dia": "Sábado",
+                "data": "10/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 423.40000000000003,
+                "km_fim": 423.40000000000003
+            },
+            {
+                "dia": "Domingo",
+                "data": "11/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 423.40000000000003,
+                "km_fim": 423.40000000000003
+            }
+        ]
+    },
+    "Madalla Teixeira Reis_S2": {
+        "id": 1789403134,
+        "semana_ref": "2",
+        "intervalo_datas": "05/01 a 11/01",
+        "promotor": "Madalla Teixeira Reis",
+        "status": "FINALIZADO",
+        "is_teste": true,
+        "km_total": 324.1,
+        "valor_km": 379.197,
+        "valor_extras": 57.5,
+        "valor_total": 436.697,
+        "gastos_extras": [
+            {
+                "desc": "Almoço de Teste",
+                "valor": 42.5
+            },
+            {
+                "desc": "Estacionamento",
+                "valor": 15.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "05/01",
+                "km": 51.7,
+                "sit": "Normal",
+                "clientes": [
+                    "21526",
+                    "21649",
+                    "21194"
+                ],
+                "leitura": true,
+                "km_ini": 100.0,
+                "km_fim": 151.7
+            },
+            {
+                "dia": "Terça",
+                "data": "06/01",
+                "km": 89.8,
+                "sit": "Normal",
+                "clientes": [
+                    "21790",
+                    "28106",
+                    "27911"
+                ],
+                "leitura": true,
+                "km_ini": 151.7,
+                "km_fim": 241.5
+            },
+            {
+                "dia": "Quarta",
+                "data": "07/01",
+                "km": 52.0,
+                "sit": "Normal",
+                "clientes": [
+                    "21357",
+                    "21194",
+                    "21222"
+                ],
+                "leitura": true,
+                "km_ini": 241.5,
+                "km_fim": 293.5
+            },
+            {
+                "dia": "Quinta",
+                "data": "08/01",
+                "km": 60.8,
+                "sit": "Normal",
+                "clientes": [
+                    "22043",
+                    "21642",
+                    "22099"
+                ],
+                "leitura": true,
+                "km_ini": 293.5,
+                "km_fim": 354.3
+            },
+            {
+                "dia": "Sexta",
+                "data": "09/01",
+                "km": 69.8,
+                "sit": "Normal",
+                "clientes": [
+                    "24068",
+                    "24100",
+                    "24390"
+                ],
+                "leitura": true,
+                "km_ini": 354.3,
+                "km_fim": 424.1
+            },
+            {
+                "dia": "Sábado",
+                "data": "10/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 424.1,
+                "km_fim": 424.1
+            },
+            {
+                "dia": "Domingo",
+                "data": "11/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 424.1,
+                "km_fim": 424.1
+            }
+        ]
+    },
+    "Rodrigo Luis Adao_S2": {
+        "id": 1789403135,
+        "semana_ref": "2",
+        "intervalo_datas": "05/01 a 11/01",
+        "promotor": "Rodrigo Luis Adao",
+        "status": "FINALIZADO",
+        "is_teste": true,
+        "km_total": 356.6,
+        "valor_km": 417.222,
+        "valor_extras": 57.5,
+        "valor_total": 474.722,
+        "gastos_extras": [
+            {
+                "desc": "Almoço de Teste",
+                "valor": 42.5
+            },
+            {
+                "desc": "Estacionamento",
+                "valor": 15.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "05/01",
+                "km": 92.0,
+                "sit": "Normal",
+                "clientes": [
+                    "12193",
+                    "27461",
+                    "9751"
+                ],
+                "leitura": true,
+                "km_ini": 100.0,
+                "km_fim": 192.0
+            },
+            {
+                "dia": "Terça",
+                "data": "06/01",
+                "km": 66.1,
+                "sit": "Normal",
+                "clientes": [
+                    "24044",
+                    "8595",
+                    "23765"
+                ],
+                "leitura": true,
+                "km_ini": 192.0,
+                "km_fim": 258.1
+            },
+            {
+                "dia": "Quarta",
+                "data": "07/01",
+                "km": 68.1,
+                "sit": "Normal",
+                "clientes": [
+                    "4408",
+                    "10421",
+                    "6079"
+                ],
+                "leitura": true,
+                "km_ini": 258.1,
+                "km_fim": 326.20000000000005
+            },
+            {
+                "dia": "Quinta",
+                "data": "08/01",
+                "km": 63.3,
+                "sit": "Normal",
+                "clientes": [
+                    "5957",
+                    "26744",
+                    "8693"
+                ],
+                "leitura": true,
+                "km_ini": 326.20000000000005,
+                "km_fim": 389.50000000000006
+            },
+            {
+                "dia": "Sexta",
+                "data": "09/01",
+                "km": 67.1,
+                "sit": "Normal",
+                "clientes": [
+                    "15450",
+                    "5957",
+                    "20845"
+                ],
+                "leitura": true,
+                "km_ini": 389.50000000000006,
+                "km_fim": 456.6
+            },
+            {
+                "dia": "Sábado",
+                "data": "10/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 456.6,
+                "km_fim": 456.6
+            },
+            {
+                "dia": "Domingo",
+                "data": "11/01",
+                "km": 0.0,
+                "sit": "Folga",
+                "clientes": [],
+                "leitura": true,
+                "km_ini": 456.6,
+                "km_fim": 456.6
+            }
+        ]
     }
 }
