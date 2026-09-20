@@ -796,5 +796,90 @@
                 "km_fim": 456.6
             }
         ]
+    },
+    "Fernanda Dias Ferreira_S38": {
+        "id": 1789937984,
+        "semana_ref": "38",
+        "intervalo_datas": "14/09 a 20/09",
+        "promotor": "Fernanda Dias Ferreira",
+        "status": "RASCUNHO",
+        "is_teste": false,
+        "km_total": 225.0,
+        "valor_km": 263.25,
+        "valor_extras": 0,
+        "valor_total": 263.25,
+        "gastos_extras": [],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "14/09",
+                "km": 32.0,
+                "sit": "Normal",
+                "clientes": [],
+                "leitura": false,
+                "km_ini": 82231.0,
+                "km_fim": 82263.0
+            },
+            {
+                "dia": "Terça",
+                "data": "15/09",
+                "km": 52.0,
+                "sit": "Normal",
+                "clientes": [],
+                "leitura": false,
+                "km_ini": 82263.0,
+                "km_fim": 82315.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "16/09",
+                "km": 66.0,
+                "sit": "Normal",
+                "clientes": [],
+                "leitura": false,
+                "km_ini": 82315.0,
+                "km_fim": 82381.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "17/09",
+                "km": 24.0,
+                "sit": "Normal",
+                "clientes": [],
+                "leitura": false,
+                "km_ini": 82381.0,
+                "km_fim": 82405.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "18/09",
+                "km": 51.0,
+                "sit": "Normal",
+                "clientes": [],
+                "leitura": false,
+                "km_ini": 82405.0,
+                "km_fim": 82456.0
+            },
+            {
+                "dia": "Sábado",
+                "data": "19/09",
+                "km": 0.0,
+                "sit": "Normal",
+                "clientes": [],
+                "leitura": false,
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Domingo",
+                "data": "20/09",
+                "km": 0.0,
+                "sit": "Normal",
+                "clientes": [],
+                "leitura": false,
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            }
+        ]
     }
 }
