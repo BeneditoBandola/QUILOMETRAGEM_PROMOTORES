@@ -883,11 +883,11 @@
         ]
     },
     "Saruete Valeska Stabile de Oliveira_S39": {
-        "id": 1790341732,
+        "id": 1790341918,
         "semana_ref": "39",
         "intervalo_datas": "21/09 a 27/09",
         "promotor": "Saruete Valeska Stabile de Oliveira",
-        "status": "RASCUNHO",
+        "status": "FINALIZADO",
         "is_teste": false,
         "km_total": 261.0,
         "valor_km": 305.37,
