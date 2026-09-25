@@ -699,21 +699,29 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS COM DATA OBRIGATÓRIA E BOTÃO DINÂMICO
+# GASTOS EXTRAS COM BOTÃO DE ADICIONAR E BOTÃO DE APAGAR POR LINHA
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 GASTOS EXTRAS")
 
-if "num_gastos_extras" not in st.session_state:
+# Inicializa a lista de gastos extras na sessão se não existir
+if "lista_gastos_extras" not in st.session_state:
     gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
-    st.session_state.num_gastos_extras = max(1, len(gastos_salvos_default))
+    if gastos_salvos_default:
+        st.session_state.lista_gastos_extras = gastos_salvos_default
+    else:
+        st.session_state.lista_gastos_extras = []
+
+# Botão para habilitar/adicionar novo gasto extra
+if not esta_finalizado:
+    if st.button("➕ ADICIONAR DESPESA EXTRA"):
+        st.session_state.lista_gastos_extras.append({"data": segunda.strftime("%d/%m"), "desc": "", "valor": 0.0})
+        st.rerun()
 
 gastos_extras = []
-for idx in range(st.session_state.num_gastos_extras):
-    gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
-    g_item = gastos_salvos_default[idx] if idx < len(gastos_salvos_default) else {}
+for idx, g_item in enumerate(st.session_state.lista_gastos_extras):
+    col_dt, col_desc, col_val, col_del = st.columns([1.2, 2.6, 1.8, 1])
     
-    col_dt, col_desc, col_val = st.columns([1.2, 3, 2])
     with col_dt:
         g_data = st.text_input(
             f"Data #{idx+1}",
@@ -726,7 +734,7 @@ for idx in range(st.session_state.num_gastos_extras):
         g_desc = st.text_input(
             f"Descrição #{idx+1}", 
             value=g_item.get("desc", ""), 
-            placeholder="Ex: Estacionamento, Almoço...", 
+            placeholder="Ex: Almoço...", 
             disabled=esta_finalizado,
             key=f"gdesc_{idx}"
         )
@@ -742,14 +750,16 @@ for idx in range(st.session_state.num_gastos_extras):
         )
         v_float = str_br_para_float(g_val_txt)
 
-    # Só considera o gasto extra se houver descrição e valor maior que zero
+    with col_del:
+        st.write("") # alinhamento vertical
+        st.write("")
+        if not esta_finalizado:
+            if st.button("🗑️ Apagar", key=f"del_gasto_{idx}"):
+                st.session_state.lista_gastos_extras.pop(idx)
+                st.rerun()
+
     if g_desc.strip() and v_float > 0 and g_data.strip():
         gastos_extras.append({"data": g_data.strip(), "desc": g_desc.strip(), "valor": v_float})
-
-if not esta_finalizado:
-    if st.button("➕ ADICIONAR OUTRA DESPESA EXTRA"):
-        st.session_state.num_gastos_extras += 1
-        st.rerun()
 
 # ==============================================================================
 # RESUMO FINANCEIRO
