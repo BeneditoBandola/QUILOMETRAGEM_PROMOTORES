@@ -15,7 +15,6 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
-from PIL import Image as PILImage
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -134,39 +133,6 @@ VALOR_KM_TAXA = 1.17
 ARQUIVO_JSON_GERAL = "historico_km_geral.json"
 NOME_LOGOTIPO = "MINASSAL_LOGOS-04.png"
 
-def obter_imagem_reportlab_forçada(caminho_logo):
-    candidatos = [caminho_logo, "MINASSAL_LOGOS-04.png", "MINASSAL_LOGOS-03.jpg", "minassal_logos-04.png"]
-    arquivo_encontrado = None
-    for c in candidatos:
-        if os.path.exists(c):
-            arquivo_encontrado = c
-            break
-
-    if not arquivo_encontrado:
-        return None
-
-    try:
-        img_pil = PILImage.open(arquivo_encontrado)
-        if img_pil.mode in ("RGBA", "LA") or (img_pil.mode == "P" and "transparency" in img_pil.info):
-            fundo_branco = PILImage.new("RGB", img_pil.size, (255, 255, 255))
-            if img_pil.mode == "P":
-                img_pil = img_pil.convert("RGBA")
-            fundo_branco.paste(img_pil, mask=img_pil.split()[3])
-            img_pil = fundo_branco
-        else:
-            img_pil = img_pil.convert("RGB")
-        
-        buffer = BytesIO()
-        img_pil.save(buffer, format="PNG")
-        buffer.seek(0)
-        
-        # Como o novo logo é horizontal, ajustamos largura e altura proporcionais para o cabeçalho
-        img_rl = Image(buffer, width=110, height=45, preserveAspectRatio=True)
-        img_rl.hAlign = 'LEFT'
-        return img_rl
-    except Exception:
-        return None
-
 # ==============================================================================
 # AUXILIARES DE FORMATAÇÃO E CÁLCULOS
 # ==============================================================================
@@ -241,9 +207,13 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
         Paragraph(f"<b>Promotor(a):</b> {promotor_nome}", ParagraphStyle('P', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#444444')))
     ]
 
-    logo_obj = obter_imagem_reportlab_forçada(NOME_LOGOTIPO)
-    if logo_obj:
-        t_cabecalho = Table([[logo_obj, col_dir_elementos]], colWidths=[120, 414])
+    if os.path.exists(NOME_LOGOTIPO):
+        try:
+            logo = Image(NOME_LOGOTIPO, width=110, height=45, preserveAspectRatio=True)
+            logo.hAlign = 'LEFT'
+            t_cabecalho = Table([[logo, col_dir_elementos]], colWidths=[120, 414])
+        except Exception:
+            t_cabecalho = Table([["", col_dir_elementos]], colWidths=[120, 414])
     else:
         t_cabecalho = Table([["", col_dir_elementos]], colWidths=[120, 414])
 
@@ -772,6 +742,7 @@ for idx in range(st.session_state.num_gastos_extras):
         )
         v_float = str_br_para_float(g_val_txt)
 
+    # Só considera o gasto extra se houver descrição e valor maior que zero
     if g_desc.strip() and v_float > 0 and g_data.strip():
         gastos_extras.append({"data": g_data.strip(), "desc": g_desc.strip(), "valor": v_float})
 
