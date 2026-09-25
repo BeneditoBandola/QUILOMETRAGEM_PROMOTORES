@@ -503,11 +503,30 @@ dados_salvos = HISTORICO_GERAL.get(chave_registro, None)
 
 with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS", expanded=False):
     st.markdown("Selecione um lançamento cadastrado para excluí-lo:")
-    # Filtra as chaves do histórico para exibir apenas os lançamentos do próprio usuário logado
     semanas_cadastradas = [k for k in HISTORICO_GERAL.keys() if k.startswith(f"{promotor_sel}_")]
     
     if semanas_cadastradas:
-        chave_para_apagar = st.selectbox("Seu lançamento cadastrado:", semanas_cadastradas)
+        # Função para formatar o nome exibido no selectbox incluindo o dia da semana da segunda-feira daquela semana
+        def formatar_nome_lancamento(chave):
+            try:
+                # Ex: "Nome_Do_Promotor_S39" -> extrai o número da semana "39"
+                partes = chave.split("_S")
+                if len(partes) == 2:
+                    s_num = int(partes[1])
+                    seg_calc, _ = calcular_intervalo_semana(s_num)
+                    # Traduz o dia da semana para o português
+                    dias_pt = {"Monday": "Segunda-feira", "Tuesday": "Terça-feira", "Wednesday": "Quarta-feira", "Thursday": "Quinta-feira", "Friday": "Sexta-feira", "Saturday": "Sábado", "Sunday": "Domingo"}
+                    dia_semana_str = dias_pt.get(seg_calc.strftime("%A"), "")
+                    return f"{chave} ({dia_semana_str})"
+            except Exception:
+                pass
+            return chave
+
+        chave_para_apagar = st.selectbox(
+            "Seu lançamento cadastrado:", 
+            semanas_cadastradas, 
+            format_func=formatar_nome_lancamento
+        )
         if st.button("🗑️ APAGAR ESTE LANÇAMENTO SELECIONADO"):
             del HISTORICO_GERAL[chave_para_apagar]
             sucesso_del = salvar_base_historico_github(
