@@ -198,7 +198,7 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
 
     elementos = []
 
-    col_esq_elementos = [
+    col_dir_elementos = [
         Paragraph(f"<b>MINASSAL CONTROLE DE REEMBOLSO{titulo_sufixo}</b>", estilo_titulo),
         Spacer(1, 3),
         Paragraph(f"RESUMO FINANCEIRO — Semana {semana_num} de {datetime.now().year}", estilo_sub),
@@ -208,17 +208,18 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
 
     if os.path.exists(NOME_LOGOTIPO):
         try:
-            logo = Image(NOME_LOGOTIPO, width=110, height=45)
-            logo.hAlign = 'RIGHT'
-            t_cabecalho = Table([[col_esq_elementos, logo]], colWidths=[384, 153])
+            # Mantém estritamente a proporção original do logotipo fixando apenas a largura
+            logo = Image(NOME_LOGOTIPO, width=100, height=40, preserveAspectRatio=True)
+            logo.hAlign = 'LEFT'
+            t_cabecalho = Table([[logo, col_dir_elementos]], colWidths=[110, 424])
         except Exception:
-            t_cabecalho = Table([[col_esq_elementos, ""]], colWidths=[384, 153])
+            t_cabecalho = Table([["", col_dir_elementos]], colWidths=[110, 424])
     else:
-        t_cabecalho = Table([[col_esq_elementos, ""]], colWidths=[384, 153])
+        t_cabecalho = Table([["", col_dir_elementos]], colWidths=[110, 424])
 
     t_cabecalho.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
-        ('ALIGN', (1,0), (1,0), 'RIGHT'),
+        ('ALIGN', (0,0), (0,0), 'LEFT'),
         ('BOTTOMPADDING', (0,0), (-1,-1), 0),
         ('TOPPADDING', (0,0), (-1,-1), 0),
     ]))
@@ -814,8 +815,6 @@ if not esta_finalizado:
                     st.warning(f"Semana finalizada no GitHub, mas houve um erro ao enviar o e-mail: {msg_email}")
                 st.balloons()
                 st.rerun()
-else:
-    st.info("ℹ️ Para realizar qualquer edição, clique em '🔓 REABRIR PARA CORREÇÃO' no topo da tela.")
 
 # Rodapé discreto na interface com autoria
 st.markdown("<br><hr><p style='text-align: center; color: #555555; font-size: 11px;'>Minassal — Controle de KM | Desenvolvido por Benedito Bandola</p>", unsafe_allow_html=True)
