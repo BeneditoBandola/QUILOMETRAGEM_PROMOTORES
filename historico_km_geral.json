@@ -883,57 +883,57 @@
         ]
     },
     "Saruete Valeska Stabile de Oliveira_S39": {
-        "id": 1790346345,
+        "id": 1790367805,
         "semana_ref": "39",
         "intervalo_datas": "21/09 a 27/09",
         "promotor": "Saruete Valeska Stabile de Oliveira",
-        "status": "RASCUNHO",
+        "status": "FINALIZADO",
         "is_teste": false,
-        "km_total": 0.0,
-        "valor_km": 0.0,
+        "km_total": 299.0,
+        "valor_km": 349.83,
         "valor_extras": 0,
-        "valor_total": 0.0,
+        "valor_total": 349.83,
         "gastos_extras": [],
         "detalhes": [
             {
                 "dia": "Segunda",
                 "data": "21/09",
-                "km": 0.0,
+                "km": 55.0,
                 "sit": "Normal",
-                "km_ini": 0.0,
-                "km_fim": 0.0
+                "km_ini": 1.0,
+                "km_fim": 56.0
             },
             {
                 "dia": "Terça",
                 "data": "22/09",
-                "km": 0.0,
+                "km": 57.0,
                 "sit": "Normal",
                 "km_ini": 0.0,
-                "km_fim": 0.0
+                "km_fim": 57.0
             },
             {
                 "dia": "Quarta",
                 "data": "23/09",
-                "km": 0.0,
+                "km": 67.0,
                 "sit": "Normal",
                 "km_ini": 0.0,
-                "km_fim": 0.0
+                "km_fim": 67.0
             },
             {
                 "dia": "Quinta",
                 "data": "24/09",
-                "km": 0.0,
+                "km": 62.0,
                 "sit": "Normal",
                 "km_ini": 0.0,
-                "km_fim": 0.0
+                "km_fim": 62.0
             },
             {
                 "dia": "Sexta",
                 "data": "25/09",
-                "km": 0.0,
+                "km": 58.0,
                 "sit": "Normal",
                 "km_ini": 0.0,
-                "km_fim": 0.0
+                "km_fim": 58.0
             }
         ]
     }
