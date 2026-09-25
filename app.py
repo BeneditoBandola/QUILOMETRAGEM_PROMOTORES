@@ -133,11 +133,29 @@ VALOR_KM_TAXA = 1.17
 ARQUIVO_JSON_GERAL = "historico_km_geral.json"
 NOME_LOGOTIPO = "MINASSAL_LOGOS-03.jpg"
 
+def encontrar_logotipo():
+    # Procura na raiz e em subpastas comuns do repositório
+    candidatos = [
+        NOME_LOGOTIPO,
+        os.path.join("QUILOMETRAGEM_PROMOTORES", NOME_LOGOTIPO),
+        "minassal_logos-03.jpg",
+        "MINASSAL_LOGOS-03.JPG"
+    ]
+    for c in candidatos:
+        if os.path.exists(c):
+            return c
+            
+    # Varredura recursiva caso esteja em outra pasta
+    for root, dirs, files in os.walk("."):
+        for f in files:
+            if "minassal" in f.lower() and ("logo" in f.lower() or "03" in f):
+                return os.path.join(root, f)
+    return None
+
 def preparar_logotipo_seguro(caminho_logo):
-    if not os.path.exists(caminho_logo):
+    if not caminho_logo or not os.path.exists(caminho_logo):
         return None
     try:
-        # Abre com Pillow e converte para JPG padrão RGB para garantir compatibilidade total no PDF
         img_pil = PILImage.open(caminho_logo)
         if img_pil.mode in ("RGBA", "P"):
             img_pil = img_pil.convert("RGB")
@@ -221,10 +239,11 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
         Paragraph(f"<b>Promotor(a):</b> {promotor_nome}", ParagraphStyle('P', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#444444')))
     ]
 
-    logo_path_seguro = preparar_logotipo_seguro(NOME_LOGOTIPO)
+    logo_path_encontrado = encontrar_logotipo()
+    logo_path_seguro = preparar_logotipo_seguro(logo_path_encontrado)
+
     if logo_path_seguro and os.path.exists(logo_path_seguro):
         try:
-            # Mantém estritamente a proporção original do logotipo e fixa a largura à esquerda
             logo = Image(logo_path_seguro, width=90, height=40, preserveAspectRatio=True)
             logo.hAlign = 'LEFT'
             t_cabecalho = Table([[logo, col_dir_elementos]], colWidths=[100, 434])
@@ -306,7 +325,6 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
 
     doc.build(elementos, onFirstPage=adicionar_rodape, onLaterPages=adicionar_rodape)
     
-    # Remove arquivo temporário de conversão se existir
     if logo_path_seguro and os.path.exists("temp_logo_convertido.jpg"):
         try:
             os.remove("temp_logo_convertido.jpg")
