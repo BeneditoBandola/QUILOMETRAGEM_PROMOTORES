@@ -9,13 +9,11 @@ import math
 import random
 import unicodedata
 import smtplib
-from io import BytesIO
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
-from PIL import Image as PILImage
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -134,25 +132,17 @@ VALOR_KM_TAXA = 1.17
 ARQUIVO_JSON_GERAL = "historico_km_geral.json"
 NOME_LOGOTIPO = "MINASSAL_LOGOS-03.jpg"
 
-def obter_imagem_reportlab(caminho_logo):
-    if not os.path.exists(caminho_logo):
-        return None
-    try:
-        # Carrega a imagem com Pillow, força conversão RGB e armazena em BytesIO na memória
-        img_pil = PILImage.open(caminho_logo)
-        if img_pil.mode in ("RGBA", "P"):
-            img_pil = img_pil.convert("RGB")
-        
-        buffer = BytesIO()
-        img_pil.save(buffer, format="JPEG", quality=95)
-        buffer.seek(0)
-        
-        # Cria o objeto Image do ReportLab diretamente do buffer de memória
-        img_rl = Image(buffer, width=95, height=42, preserveAspectRatio=True)
-        img_rl.hAlign = 'LEFT'
-        return img_rl
-    except Exception:
-        return None
+def obter_caminho_absoluto_logo():
+    caminhos = [
+        NOME_LOGOTIPO,
+        os.path.join(os.getcwd(), NOME_LOGOTIPO),
+        "minassal_logos-03.jpg",
+        "MINASSAL_LOGOS-03.JPG"
+    ]
+    for p in caminhos:
+        if os.path.exists(p):
+            return os.path.abspath(p)
+    return None
 
 # ==============================================================================
 # AUXILIARES DE FORMATAÇÃO E CÁLCULOS
@@ -228,9 +218,14 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
         Paragraph(f"<b>Promotor(a):</b> {promotor_nome}", ParagraphStyle('P', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#444444')))
     ]
 
-    logo_obj = obter_imagem_reportlab(NOME_LOGOTIPO)
-    if logo_obj:
-        t_cabecalho = Table([[logo_obj, col_dir_elementos]], colWidths=[110, 424])
+    logo_path = obter_caminho_absoluto_logo()
+    if logo_path:
+        try:
+            logo = Image(logo_path, width=95, height=42, preserveAspectRatio=True)
+            logo.hAlign = 'LEFT'
+            t_cabecalho = Table([[logo, col_dir_elementos]], colWidths=[110, 424])
+        except Exception:
+            t_cabecalho = Table([["", col_dir_elementos]], colWidths=[110, 424])
     else:
         t_cabecalho = Table([["", col_dir_elementos]], colWidths=[110, 424])
 
