@@ -9,6 +9,7 @@ import math
 import random
 import unicodedata
 import smtplib
+from io import BytesIO
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -133,35 +134,23 @@ VALOR_KM_TAXA = 1.17
 ARQUIVO_JSON_GERAL = "historico_km_geral.json"
 NOME_LOGOTIPO = "MINASSAL_LOGOS-03.jpg"
 
-def encontrar_logotipo():
-    # Procura na raiz e em subpastas comuns do repositório
-    candidatos = [
-        NOME_LOGOTIPO,
-        os.path.join("QUILOMETRAGEM_PROMOTORES", NOME_LOGOTIPO),
-        "minassal_logos-03.jpg",
-        "MINASSAL_LOGOS-03.JPG"
-    ]
-    for c in candidatos:
-        if os.path.exists(c):
-            return c
-            
-    # Varredura recursiva caso esteja em outra pasta
-    for root, dirs, files in os.walk("."):
-        for f in files:
-            if "minassal" in f.lower() and ("logo" in f.lower() or "03" in f):
-                return os.path.join(root, f)
-    return None
-
-def preparar_logotipo_seguro(caminho_logo):
-    if not caminho_logo or not os.path.exists(caminho_logo):
+def obter_imagem_reportlab(caminho_logo):
+    if not os.path.exists(caminho_logo):
         return None
     try:
+        # Carrega a imagem com Pillow, força conversão RGB e armazena em BytesIO na memória
         img_pil = PILImage.open(caminho_logo)
         if img_pil.mode in ("RGBA", "P"):
             img_pil = img_pil.convert("RGB")
-        temp_logo_path = "temp_logo_convertido.jpg"
-        img_pil.save(temp_logo_path, "JPEG")
-        return temp_logo_path
+        
+        buffer = BytesIO()
+        img_pil.save(buffer, format="JPEG", quality=95)
+        buffer.seek(0)
+        
+        # Cria o objeto Image do ReportLab diretamente do buffer de memória
+        img_rl = Image(buffer, width=95, height=42, preserveAspectRatio=True)
+        img_rl.hAlign = 'LEFT'
+        return img_rl
     except Exception:
         return None
 
@@ -239,18 +228,11 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
         Paragraph(f"<b>Promotor(a):</b> {promotor_nome}", ParagraphStyle('P', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#444444')))
     ]
 
-    logo_path_encontrado = encontrar_logotipo()
-    logo_path_seguro = preparar_logotipo_seguro(logo_path_encontrado)
-
-    if logo_path_seguro and os.path.exists(logo_path_seguro):
-        try:
-            logo = Image(logo_path_seguro, width=90, height=40, preserveAspectRatio=True)
-            logo.hAlign = 'LEFT'
-            t_cabecalho = Table([[logo, col_dir_elementos]], colWidths=[100, 434])
-        except Exception:
-            t_cabecalho = Table([["", col_dir_elementos]], colWidths=[100, 434])
+    logo_obj = obter_imagem_reportlab(NOME_LOGOTIPO)
+    if logo_obj:
+        t_cabecalho = Table([[logo_obj, col_dir_elementos]], colWidths=[110, 424])
     else:
-        t_cabecalho = Table([["", col_dir_elementos]], colWidths=[100, 434])
+        t_cabecalho = Table([["", col_dir_elementos]], colWidths=[110, 424])
 
     t_cabecalho.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
@@ -324,12 +306,6 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     elementos.append(Paragraph(f"VALOR TOTAL A PAGAR: R$ {float_para_str_br(total_geral)}", estilo_total))
 
     doc.build(elementos, onFirstPage=adicionar_rodape, onLaterPages=adicionar_rodape)
-    
-    if logo_path_seguro and os.path.exists("temp_logo_convertido.jpg"):
-        try:
-            os.remove("temp_logo_convertido.jpg")
-        except Exception:
-            pass
 
 # ==============================================================================
 # FUNÇÃO DE ENVIO DE E-MAIL COM ANEXO PDF
