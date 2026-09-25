@@ -267,7 +267,7 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     nome_arq_pdf = f"Resumo_Financeiro_Semana_{num_semana}_{promotor_nome.replace(' ', '_')}.pdf"
     gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, nome_arq_pdf)
 
-    assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {semana_num} - {promotor_nome}"
+    assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {num_semana} - {promotor_nome}"
     
     corpo_html = f"""
     <html>
@@ -502,10 +502,12 @@ chave_registro = f"{promotor_sel}_S{num_semana}"
 dados_salvos = HISTORICO_GERAL.get(chave_registro, None)
 
 with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS", expanded=False):
-    st.markdown("Selecione um lançamento cadastrado no histórico geral para excluí-lo:")
-    semanas_cadastradas = list(HISTORICO_GERAL.keys())
+    st.markdown("Selecione um lançamento cadastrado para excluí-lo:")
+    # Filtra as chaves do histórico para exibir apenas os lançamentos do próprio usuário logado
+    semanas_cadastradas = [k for k in HISTORICO_GERAL.keys() if k.startswith(f"{promotor_sel}_")]
+    
     if semanas_cadastradas:
-        chave_para_apagar = st.selectbox("Lançamento cadastrado:", semanas_cadastradas)
+        chave_para_apagar = st.selectbox("Seu lançamento cadastrado:", semanas_cadastradas)
         if st.button("🗑️ APAGAR ESTE LANÇAMENTO SELECIONADO"):
             del HISTORICO_GERAL[chave_para_apagar]
             sucesso_del = salvar_base_historico_github(
@@ -517,7 +519,7 @@ with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS", expanded=False):
                 st.success(f"Lançamento {chave_para_apagar} apagado com sucesso!")
                 st.rerun()
     else:
-        st.info("Nenhum lançamento no histórico.")
+        st.info("Nenhum lançamento encontrado para o seu perfil.")
 
 st.divider()
 
@@ -546,7 +548,6 @@ elif dados_salvos:
 # ==============================================================================
 st.markdown("### 📋 REGISTROS DIÁRIOS DE QUILOMETRAGEM")
 
-# Verificar se já existem dados salvos de sábado ou domingo no histórico
 mapa_dados_salvos = {}
 if dados_salvos and "detalhes" in dados_salvos:
     mapa_dados_salvos = {d["dia"]: d for d in dados_salvos["detalhes"]}
