@@ -15,7 +15,7 @@ from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
 from reportlab.lib.pagesizes import A4
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 
@@ -130,6 +130,7 @@ EMAIL_PRINCIPAL = "benedito.bandola@minassal.com.br"
 EMAIL_REMETENTE = "beneditobandola@gmail.com"
 VALOR_KM_TAXA = 1.17
 ARQUIVO_JSON_GERAL = "historico_km_geral.json"
+NOME_LOGOTIPO = "MINASSAL_LOGOS-03.jpg"
 
 # ==============================================================================
 # AUXILIARES DE FORMATAÇÃO E CÁLCULOS
@@ -163,28 +164,68 @@ def calcular_intervalo_semana(num_semana, ano=None):
     return segunda, domingo
 
 # ==============================================================================
+# RODAPÉ DE PROTEÇÃO E AUTORIA
+# ==============================================================================
+def adicionar_rodape(canvas, doc):
+    canvas.saveState()
+    canvas.setFont('Helvetica', 8)
+    canvas.setFillColor(colors.HexColor('#666666'))
+    texto_rodape = "Minassal Distribuidora — Sistema de Controle de KM | Desenvolvido por Benedito Bandola"
+    canvas.drawRightString(A4[0] - 30, 15, texto_rodape)
+    canvas.restoreState()
+
+# ==============================================================================
 # GERAÇÃO DO PDF EXECUTIVO (MODELO MINASSAL)
 # ==============================================================================
 def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminho_pdf_saida):
-    doc = SimpleDocTemplate(caminho_pdf_saida, pagesize=A4, rightMargin=30, leftMargin=30, topMargin=30, bottomMargin=30)
+    doc = SimpleDocTemplate(
+        caminho_pdf_saida, 
+        pagesize=A4, 
+        rightMargin=30, 
+        leftMargin=30, 
+        topMargin=30, 
+        bottomMargin=30
+    )
     
     is_teste = payload_dados.get("is_teste", False)
     titulo_sufixo = " [TESTE / SIMULAÇÃO]" if is_teste else ""
 
-    estilo_titulo = ParagraphStyle('T', fontName='Helvetica-Bold', fontSize=14, textColor=colors.HexColor('#1B5E20'), alignment=1)
-    estilo_sub = ParagraphStyle('S', fontName='Helvetica-Bold', fontSize=10, textColor=colors.HexColor('#333333'), alignment=1)
+    estilo_titulo = ParagraphStyle('T', fontName='Helvetica-Bold', fontSize=13, textColor=colors.HexColor('#0B2545'), alignment=0)
+    estilo_sub = ParagraphStyle('S', fontName='Helvetica-Bold', fontSize=9.5, textColor=colors.HexColor('#333333'), alignment=0)
     estilo_th = ParagraphStyle('TH', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=1)
     estilo_td = ParagraphStyle('TD', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#222222'), alignment=1)
     estilo_td_l = ParagraphStyle('TDL', parent=estilo_td, alignment=0)
 
     elementos = []
-    elementos.append(Paragraph(f"MINASSAL CONTROLE DE REEMBOLSO{titulo_sufixo}", estilo_titulo))
-    elementos.append(Spacer(1, 4))
-    elementos.append(Paragraph(f"RESUMO FINANCEIRO — Semana {semana_num} de {datetime.now().year}", estilo_sub))
-    elementos.append(Spacer(1, 4))
-    elementos.append(Paragraph(f"<b>Promotor(a):</b> {promotor_nome}", ParagraphStyle('P', fontName='Helvetica', fontSize=9, textColor=colors.HexColor('#444444'))))
+
+    col_esq_elementos = [
+        Paragraph(f"<b>MINASSAL CONTROLE DE REEMBOLSO{titulo_sufixo}</b>", estilo_titulo),
+        Spacer(1, 3),
+        Paragraph(f"RESUMO FINANCEIRO — Semana {semana_num} de {datetime.now().year}", estilo_sub),
+        Spacer(1, 3),
+        Paragraph(f"<b>Promotor(a):</b> {promotor_nome}", ParagraphStyle('P', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#444444')))
+    ]
+
+    if os.path.exists(NOME_LOGOTIPO):
+        try:
+            logo = Image(NOME_LOGOTIPO, width=110, height=45)
+            logo.hAlign = 'RIGHT'
+            t_cabecalho = Table([[col_esq_elementos, logo]], colWidths=[384, 153])
+        except Exception:
+            t_cabecalho = Table([[col_esq_elementos, ""]], colWidths=[384, 153])
+    else:
+        t_cabecalho = Table([[col_esq_elementos, ""]], colWidths=[384, 153])
+
+    t_cabecalho.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN', (1,0), (1,0), 'RIGHT'),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING', (0,0), (-1,-1), 0),
+    ]))
+
+    elementos.append(t_cabecalho)
     elementos.append(Spacer(1, 8))
-    elementos.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#1B5E20'), spaceAfter=10))
+    elementos.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor('#134074'), spaceAfter=10))
 
     tabela_dados = [[
         Paragraph("DATA", estilo_th),
@@ -205,7 +246,7 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
 
     t = Table(tabela_dados, colWidths=[100, 150, 110, 143])
     t.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1B5E20')),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#134074')),
         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
@@ -216,7 +257,7 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     elementos.append(t)
     elementos.append(Spacer(1, 15))
 
-    elementos.append(Paragraph("<b>DESPESAS EXTRAS REEMBOLSÁVEIS:</b>", ParagraphStyle('DE', fontName='Helvetica-Bold', fontSize=9.5, textColor=colors.HexColor('#1B5E20'))))
+    elementos.append(Paragraph("<b>DESPESAS EXTRAS REEMBOLSÁVEIS:</b>", ParagraphStyle('DE', fontName='Helvetica-Bold', fontSize=9.5, textColor=colors.HexColor('#134074'))))
     elementos.append(Spacer(1, 5))
 
     gastos = payload_dados.get("gastos_extras", [])
@@ -230,7 +271,7 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
             ])
         tg = Table(tabela_gastos, colWidths=[100, 250, 153])
         tg.setStyle(TableStyle([
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#134074')),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('TOPPADDING', (0, 0), (-1, -1), 4),
@@ -243,10 +284,10 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     elementos.append(Spacer(1, 20))
 
     total_geral = payload_dados.get("valor_total", 0.0)
-    estilo_total = ParagraphStyle('TOT', fontName='Helvetica-Bold', fontSize=12, textColor=colors.HexColor('#1B5E20'), alignment=2)
+    estilo_total = ParagraphStyle('TOT', fontName='Helvetica-Bold', fontSize=12, textColor=colors.HexColor('#134074'), alignment=2)
     elementos.append(Paragraph(f"VALOR TOTAL A PAGAR: R$ {float_para_str_br(total_geral)}", estilo_total))
 
-    doc.build(elementos)
+    doc.build(elementos, onFirstPage=adicionar_rodape, onLaterPages=adicionar_rodape)
 
 # ==============================================================================
 # FUNÇÃO DE ENVIO DE E-MAIL COM ANEXO PDF
@@ -272,13 +313,14 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     corpo_html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333;">
-        <h2 style="color: #1B5E20;">Minassal - Fechamento de KM e Reembolso {sufixo_assunto}</h2>
+        <h2 style="color: #134074;">Minassal - Fechamento de KM e Reembolso {sufixo_assunto}</h2>
         <p><b>Promotor(a):</b> {promotor_nome}</p>
         <p><b>Semana de Referência:</b> Semana {num_semana} ({intervalo})</p>
         <hr/>
         <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM e despesas extras.</p>
         <p><b>Valor Total a Pagar: R$ {float_para_str_br(payload_dados['valor_total'])}</b></p>
         <p style="font-size: 11px; color: #777; margin-top: 20px;">E-mail automático enviado pelo sistema de Controle de KM da Minassal.</p>
+        <p style="font-size: 10px; color: #888; border-top: 1px solid #eee; margin-top: 15px; padding-top: 5px;">Desenvolvido por Benedito Bandola</p>
       </body>
     </html>
     """
@@ -506,15 +548,12 @@ with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS", expanded=False):
     semanas_cadastradas = [k for k in HISTORICO_GERAL.keys() if k.startswith(f"{promotor_sel}_")]
     
     if semanas_cadastradas:
-        # Função para formatar o nome exibido no selectbox incluindo o dia da semana da segunda-feira daquela semana
         def formatar_nome_lancamento(chave):
             try:
-                # Ex: "Nome_Do_Promotor_S39" -> extrai o número da semana "39"
                 partes = chave.split("_S")
                 if len(partes) == 2:
                     s_num = int(partes[1])
                     seg_calc, _ = calcular_intervalo_semana(s_num)
-                    # Traduz o dia da semana para o português
                     dias_pt = {"Monday": "Segunda-feira", "Tuesday": "Terça-feira", "Wednesday": "Quarta-feira", "Thursday": "Quinta-feira", "Friday": "Sexta-feira", "Saturday": "Sábado", "Sunday": "Domingo"}
                     dia_semana_str = dias_pt.get(seg_calc.strftime("%A"), "")
                     return f"{chave} ({dia_semana_str})"
@@ -777,3 +816,6 @@ if not esta_finalizado:
                 st.rerun()
 else:
     st.info("ℹ️ Para realizar qualquer edição, clique em '🔓 REABRIR PARA CORREÇÃO' no topo da tela.")
+
+# Rodapé discreto na interface com autoria
+st.markdown("<br><hr><p style='text-align: center; color: #555555; font-size: 11px;'>Minassal — Controle de KM | Desenvolvido por Benedito Bandola</p>", unsafe_allow_html=True)
