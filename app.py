@@ -14,6 +14,7 @@ from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 from datetime import datetime, timedelta
+from PIL import Image as PILImage
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -132,6 +133,20 @@ VALOR_KM_TAXA = 1.17
 ARQUIVO_JSON_GERAL = "historico_km_geral.json"
 NOME_LOGOTIPO = "MINASSAL_LOGOS-03.jpg"
 
+def preparar_logotipo_seguro(caminho_logo):
+    if not os.path.exists(caminho_logo):
+        return None
+    try:
+        # Abre com Pillow e converte para JPG padrão RGB para garantir compatibilidade total no PDF
+        img_pil = PILImage.open(caminho_logo)
+        if img_pil.mode in ("RGBA", "P"):
+            img_pil = img_pil.convert("RGB")
+        temp_logo_path = "temp_logo_convertido.jpg"
+        img_pil.save(temp_logo_path, "JPEG")
+        return temp_logo_path
+    except Exception:
+        return None
+
 # ==============================================================================
 # AUXILIARES DE FORMATAÇÃO E CÁLCULOS
 # ==============================================================================
@@ -206,16 +221,17 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
         Paragraph(f"<b>Promotor(a):</b> {promotor_nome}", ParagraphStyle('P', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#444444')))
     ]
 
-    if os.path.exists(NOME_LOGOTIPO):
+    logo_path_seguro = preparar_logotipo_seguro(NOME_LOGOTIPO)
+    if logo_path_seguro and os.path.exists(logo_path_seguro):
         try:
-            # Fornecendo largura e altura proporcionais fixas para garantir a renderização sem distorção
-            logo = Image(NOME_LOGOTIPO, width=95, height=45, preserveAspectRatio=True)
+            # Mantém estritamente a proporção original do logotipo e fixa a largura à esquerda
+            logo = Image(logo_path_seguro, width=90, height=40, preserveAspectRatio=True)
             logo.hAlign = 'LEFT'
-            t_cabecalho = Table([[logo, col_dir_elementos]], colWidths=[110, 424])
+            t_cabecalho = Table([[logo, col_dir_elementos]], colWidths=[100, 434])
         except Exception:
-            t_cabecalho = Table([["", col_dir_elementos]], colWidths=[110, 424])
+            t_cabecalho = Table([["", col_dir_elementos]], colWidths=[100, 434])
     else:
-        t_cabecalho = Table([["", col_dir_elementos]], colWidths=[110, 424])
+        t_cabecalho = Table([["", col_dir_elementos]], colWidths=[100, 434])
 
     t_cabecalho.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
@@ -289,6 +305,13 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     elementos.append(Paragraph(f"VALOR TOTAL A PAGAR: R$ {float_para_str_br(total_geral)}", estilo_total))
 
     doc.build(elementos, onFirstPage=adicionar_rodape, onLaterPages=adicionar_rodape)
+    
+    # Remove arquivo temporário de conversão se existir
+    if logo_path_seguro and os.path.exists("temp_logo_convertido.jpg"):
+        try:
+            os.remove("temp_logo_convertido.jpg")
+        except Exception:
+            pass
 
 # ==============================================================================
 # FUNÇÃO DE ENVIO DE E-MAIL COM ANEXO PDF
