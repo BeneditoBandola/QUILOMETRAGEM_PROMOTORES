@@ -208,8 +208,8 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
 
     if os.path.exists(NOME_LOGOTIPO):
         try:
-            # Mantém estritamente a proporção original do logotipo fixando apenas a largura
-            logo = Image(NOME_LOGOTIPO, width=100, height=40, preserveAspectRatio=True)
+            # Fornecendo largura e altura proporcionais fixas para garantir a renderização sem distorção
+            logo = Image(NOME_LOGOTIPO, width=95, height=45, preserveAspectRatio=True)
             logo.hAlign = 'LEFT'
             t_cabecalho = Table([[logo, col_dir_elementos]], colWidths=[110, 424])
         except Exception:
