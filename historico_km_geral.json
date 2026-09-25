@@ -883,53 +883,47 @@
         ]
     },
     "Saruete Valeska Stabile de Oliveira_S39": {
-        "id": 1790343795,
+        "id": 1790346345,
         "semana_ref": "39",
         "intervalo_datas": "21/09 a 27/09",
         "promotor": "Saruete Valeska Stabile de Oliveira",
         "status": "RASCUNHO",
         "is_teste": false,
-        "km_total": 271.0,
-        "valor_km": 317.07,
-        "valor_extras": 120.0,
-        "valor_total": 437.07,
-        "gastos_extras": [
-            {
-                "data": "21/09",
-                "desc": "teste",
-                "valor": 120.0
-            }
-        ],
+        "km_total": 0.0,
+        "valor_km": 0.0,
+        "valor_extras": 0,
+        "valor_total": 0.0,
+        "gastos_extras": [],
         "detalhes": [
             {
                 "dia": "Segunda",
                 "data": "21/09",
-                "km": 34.0,
+                "km": 0.0,
                 "sit": "Normal",
-                "km_ini": 1.0,
-                "km_fim": 35.0
+                "km_ini": 0.0,
+                "km_fim": 0.0
             },
             {
                 "dia": "Terça",
                 "data": "22/09",
-                "km": 57.0,
+                "km": 0.0,
                 "sit": "Normal",
                 "km_ini": 0.0,
-                "km_fim": 57.0
+                "km_fim": 0.0
             },
             {
                 "dia": "Quarta",
                 "data": "23/09",
-                "km": 180.0,
+                "km": 0.0,
                 "sit": "Normal",
                 "km_ini": 0.0,
-                "km_fim": 180.0
+                "km_fim": 0.0
             },
             {
                 "dia": "Quinta",
                 "data": "24/09",
                 "km": 0.0,
-                "sit": "Falta",
+                "sit": "Normal",
                 "km_ini": 0.0,
                 "km_fim": 0.0
             },
@@ -937,7 +931,7 @@
                 "dia": "Sexta",
                 "data": "25/09",
                 "km": 0.0,
-                "sit": "Falta",
+                "sit": "Normal",
                 "km_ini": 0.0,
                 "km_fim": 0.0
             }
