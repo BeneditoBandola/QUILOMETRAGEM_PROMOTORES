@@ -8,7 +8,6 @@ import glob
 import math
 import random
 import unicodedata
-import pydeck as pdk
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -101,51 +100,32 @@ st.markdown("""
 DADOS_PROMOTORES = {
     "Pamela Camila de Almeida Alexandrino": {
         "endereco": "Rua Doutor Rowilson Flora, 753 - Poços de Caldas/MG",
-        "email": "pamelaalmeida5@icloud.com",
-        "lat": -21.7858,
-        "lon": -46.5625,
-        "cidades": ["POÇOS DE CALDAS", "ANDRADAS", "GUAXUPÉ", "ITAJUBA", "POUSO ALEGRE", "VARGINHA", "TRÊS PONTAS", "TRÊS CORAÇÕES", "MACHADO", "ALFENAS"]
+        "email": "pamelaalmeida5@icloud.com"
     },
     "Fernanda Dias Ferreira": {
         "endereco": "Rua Jorge Raimundo, 409 - Juiz de Fora/MG",
-        "email": "fernandaferreira_jf@yahoo.com.br",
-        "lat": -21.7642,
-        "lon": -43.3496,
-        "cidades": ["JUIZ DE FORA"]
+        "email": "fernandaferreira_jf@yahoo.com.br"
     },
     "Saruete Valeska Stabile de Oliveira": {
         "endereco": "Rua José Gonçalves de Souza, 105 - São José do Rio Preto/SP",
-        "email": "saruetesjrp79@gmail.com",
-        "lat": -20.8113,
-        "lon": -49.3758,
-        "cidades": ["SÃO JOSÉ DO RIO PRETO", "MIRASSOL", "CATANDUVA"]
+        "email": "saruetesjrp79@gmail.com"
     },
     "Carolina Rodrigues Bruno": {
         "endereco": "Rua Doutor Bernardino de Campos - São Carlos/SP",
-        "email": "Crbruno27123@gmail.com",
-        "lat": -22.0175,
-        "lon": -47.8908,
-        "cidades": ["SÃO CARLOS", "ARARAQUARA", "MATÃO"]
+        "email": "Crbruno27123@gmail.com"
     },
     "Madalla Teixeira Reis": {
         "endereco": "Rua Odilon Machado, 105 - Tocantins/MG",
-        "email": "madallareis66@gmail.com",
-        "lat": -21.1764,
-        "lon": -43.0181,
-        "cidades": ["UBÁ", "DESCOBERTO", "SÃO JOÃO NEPOMUCENO", "VIÇOSA", "TOCANTINS", "RODEIRO", "PIRAÚBA", "GUARANI", "RIO POMBA", "RIO NOVO"]
+        "email": "madallareis66@gmail.com"
     },
     "Rodrigo Luis Adao": {
         "endereco": "Avenida Professora Edul Rangel Rabello, 405 - Ribeirão Preto/SP",
-        "email": "",
-        "lat": -21.2075,
-        "lon": -47.7981,
-        "cidades": ["RIBEIRÃO PRETO"]
+        "email": ""
     }
 }
 
 PROMOTORES = list(DADOS_PROMOTORES.keys())
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
-NOME_PLANILHA_CLIENTES = "Cópia de clientes com cnpj corretinho novinho (1).xlsx"
 EMAIL_PRINCIPAL = "benedito.bandola@minassal.com.br"
 EMAIL_REMETENTE = "beneditobandola@gmail.com"
 VALOR_KM_TAXA = 1.17
@@ -154,11 +134,6 @@ ARQUIVO_JSON_GERAL = "historico_km_geral.json"
 # ==============================================================================
 # AUXILIARES DE FORMATAÇÃO E CÁLCULOS
 # ==============================================================================
-def normalizar_texto(txt):
-    if not txt:
-        return ""
-    return unicodedata.normalize('NFKD', str(txt)).encode('ASCII', 'ignore').decode('utf-8').strip().upper()
-
 def str_br_para_float(val):
     if not val:
         return 0.0
@@ -186,26 +161,6 @@ def calcular_intervalo_semana(num_semana, ano=None):
     segunda = start + timedelta(weeks=num_semana - 1)
     domingo = segunda + timedelta(days=6)
     return segunda, domingo
-
-def distancia_haversine(lat1, lon1, lat2, lon2):
-    R = 6371.0
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    a = math.sin(dlat / 2)**2 + math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) * math.sin(dlon / 2)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
-def estimar_km_circuito_completo(lat_casa, lon_casa, pontos_lojas):
-    if not pontos_lojas:
-        return 0.0
-    rota = [(lat_casa, lon_casa)] + pontos_lojas + [(lat_casa, lon_casa)]
-    dist_total = 0.0
-    for i in range(len(rota) - 1):
-        dist_total += distancia_haversine(
-            rota[i][0], rota[i][1],
-            rota[i+1][0], rota[i+1][1]
-        )
-    return dist_total * 1.28
 
 # ==============================================================================
 # GERAÇÃO DO PDF EXECUTIVO (MODELO MINASSAL)
@@ -266,13 +221,14 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
 
     gastos = payload_dados.get("gastos_extras", [])
     if gastos:
-        tabela_gastos = [[Paragraph("DESCRIÇÃO", estilo_th), Paragraph("VALOR", estilo_th)]]
+        tabela_gastos = [[Paragraph("DATA", estilo_th), Paragraph("DESCRIÇÃO", estilo_th), Paragraph("VALOR", estilo_th)]]
         for g in gastos:
             tabela_gastos.append([
+                Paragraph(g.get("data", ""), estilo_td),
                 Paragraph(g.get("desc", ""), estilo_td_l),
                 Paragraph(f"R$ {float_para_str_br(g.get('valor', 0.0))}", estilo_td),
             ])
-        tg = Table(tabela_gastos, colWidths=[350, 153])
+        tg = Table(tabela_gastos, colWidths=[100, 250, 153])
         tg.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#333333')),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -318,9 +274,9 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
       <body style="font-family: Arial, sans-serif; color: #333;">
         <h2 style="color: #1B5E20;">Minassal - Fechamento de KM e Reembolso {sufixo_assunto}</h2>
         <p><b>Promotor(a):</b> {promotor_nome}</p>
-        <p><b>Semana de Referência:</b> Semana {semana_num} ({intervalo})</p>
+        <p><b>Semana de Referência:</b> Semana {num_semana} ({intervalo})</p>
         <hr/>
-        <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM, rotas e despesas extras.</p>
+        <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM e despesas extras.</p>
         <p><b>Valor Total a Pagar: R$ {float_para_str_br(payload_dados['valor_total'])}</b></p>
         <p style="font-size: 11px; color: #777; margin-top: 20px;">E-mail automático enviado pelo sistema de Controle de KM da Minassal.</p>
       </body>
@@ -354,73 +310,6 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
         return True, "E-mail com PDF enviado com sucesso!"
     except Exception as e:
         return False, str(e)
-
-# ==============================================================================
-# CARREGAMENTO DA BASE DE CLIENTES E VENDAS
-# ==============================================================================
-@st.cache_data(ttl=1800)
-def carregar_base_cruzada():
-    arqs = glob.glob("*.xlsx")
-    caminho_cli = NOME_PLANILHA_CLIENTES
-    if caminho_cli not in arqs and arqs:
-        for a in arqs:
-            if "clientes" in a.lower():
-                caminho_cli = a
-                break
-        else:
-            caminho_cli = arqs[0]
-
-    try:
-        df_cli = pd.read_excel(caminho_cli, sheet_name=0)
-        df_cli = df_cli.dropna(subset=["CÓDIGO", "NOME"]).copy()
-        df_cli["CÓDIGO"] = df_cli["CÓDIGO"].astype(int).astype(str).str.strip()
-        df_cli["NOME"] = df_cli["NOME"].astype(str).str.strip()
-        df_cli["CIDADE_RAW"] = df_cli["CIDADE"].fillna("NÃO INFORMADA").astype(str).str.strip().str.upper()
-        df_cli["CIDADE_NORM"] = df_cli["CIDADE_RAW"].apply(normalizar_texto)
-        df_cli["BAIRRO"] = df_cli["BAIRRO"].fillna("").astype(str).str.strip()
-        df_cli["ENDEREÇO"] = df_cli["ENDEREÇO"].fillna("").astype(str).str.strip()
-        df_cli["UF"] = df_cli["UF"].fillna("").astype(str).str.strip()
-
-        def sanitizar_coord(val):
-            try:
-                if pd.isna(val):
-                    return None
-                return float(str(val).replace(",", ".").strip())
-            except ValueError:
-                return None
-
-        df_cli["lat"] = df_cli["LATITUDE"].apply(sanitizar_coord)
-        df_cli["lon"] = df_cli["LONGITUDE"].apply(sanitizar_coord)
-    except Exception as e:
-        st.error(f"Erro ao carregar cadastro de clientes: {e}")
-        return pd.DataFrame()
-
-    candidatos_cubo = [a for a in arqs if "cubo" in a.lower() or "vendas" in a.lower()]
-    if not candidatos_cubo:
-        return df_cli
-
-    caminho_vendas = max(candidatos_cubo, key=os.path.getmtime)
-    try:
-        df_vendas = pd.read_excel(caminho_vendas, sheet_name=0)
-        df_vendas = df_vendas.dropna(subset=["CLIENTE CODIGO", "TOTAL VALOR"]).copy()
-        df_vendas["CLIENTE CODIGO"] = df_vendas["CLIENTE CODIGO"].astype(int).astype(str).str.strip()
-        df_vendas = df_vendas[df_vendas["TOTAL VALOR"] > 0]
-        vendas_resumo = df_vendas.groupby("CLIENTE CODIGO")["TOTAL VALOR"].sum().reset_index()
-    except Exception:
-        return df_cli
-
-    df_merged = pd.merge(df_cli, vendas_resumo, left_on="CÓDIGO", right_on="CLIENTE CODIGO", how="inner")
-    df_merged = df_merged.sort_values(by="TOTAL VALOR", ascending=False)
-    return df_merged
-
-DF_CLIENTES = carregar_base_cruzada()
-
-MAPA_GERAL_NOMES = {}
-if not DF_CLIENTES.empty:
-    for _, r in DF_CLIENTES.iterrows():
-        bairro_str = f" - {r['BAIRRO']}" if r['BAIRRO'] else ""
-        cidade_str = f" ({r['CIDADE_RAW']}/{r['UF']})" if r['CIDADE_RAW'] else ""
-        MAPA_GERAL_NOMES[r["CÓDIGO"]] = f"{r['NOME']}{bairro_str}{cidade_str}"
 
 # ==============================================================================
 # INTEGRAÇÃO COM GITHUB (JSON CENTRALIZADO)
@@ -522,9 +411,6 @@ if is_area_teste:
 
         sucessos = 0
         for p_nome in promotores_alvo:
-            p_dados = DADOS_PROMOTORES[p_nome]
-            cidades_p = [normalizar_texto(c) for c in p_dados.get("cidades", [])]
-
             dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
             detalhes_ficticios = []
             km_tot_fict = 0.0
@@ -533,34 +419,22 @@ if is_area_teste:
             for idx_d, d_nome in enumerate(dias_semana):
                 dt_d = (seg_t + timedelta(days=idx_d)).strftime("%d/%m")
                 sit_f = "Normal" if idx_d not in [5, 6] else "Folga"
-                cli_f = []
-                km_d_f = 0.0
+                km_d_f = 0.0 if sit_f != "Normal" else round(random.uniform(45.0, 95.0), 1)
                 kmi_f = km_base
-                kmf_f = km_base
-
-                if sit_f == "Normal" and not DF_CLIENTES.empty:
-                    df_prom = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"].isin(cidades_p)]
-                    if df_prom.empty:
-                        df_prom = DF_CLIENTES
-                    amostra = df_prom.sample(n=min(3, len(df_prom)))
-                    cli_f = amostra["CÓDIGO"].tolist()
-                    km_d_f = round(random.uniform(45.0, 95.0), 1)
-                    kmf_f = kmi_f + km_d_f
-                    km_base = kmf_f
+                kmf_f = km_base + km_d_f
+                km_base = kmf_f
 
                 detalhes_ficticios.append({
                     "dia": d_nome,
                     "data": dt_d,
                     "km": km_d_f,
                     "sit": sit_f,
-                    "clientes": cli_f,
-                    "leitura": True,
                     "km_ini": kmi_f,
                     "km_fim": kmf_f
                 })
                 km_tot_fict += km_d_f
 
-            gastos_fict = [{"desc": "Almoço de Teste", "valor": 42.50}, {"desc": "Estacionamento", "valor": 15.00}]
+            gastos_fict = [{"data": seg_t.strftime("%d/%m"), "desc": "Almoço de Teste", "valor": 42.50}, {"data": seg_t.strftime("%d/%m"), "desc": "Estacionamento", "valor": 15.00}]
             v_km_fict = km_tot_fict * VALOR_KM_TAXA
             v_ext_fict = sum(g["valor"] for g in gastos_fict)
             v_tot_fict = v_km_fict + v_ext_fict
@@ -603,17 +477,6 @@ if is_area_teste:
 # FLUXO NORMAL DO PROMOTOR
 # ==============================================================================
 dados_promotor_atual = DADOS_PROMOTORES.get(promotor_sel, {})
-cidades_definidas = dados_promotor_atual.get("cidades", [])
-cidades_norm_promotor = [normalizar_texto(c) for c in cidades_definidas]
-
-if not DF_CLIENTES.empty:
-    todas_cidades_norm = sorted(list(DF_CLIENTES["CIDADE_NORM"].unique()))
-    if cidades_norm_promotor:
-        cidades_disponiveis_promotor = [c for c in cidades_norm_promotor if c in todas_cidades_norm]
-    else:
-        cidades_disponiveis_promotor = todas_cidades_norm
-else:
-    cidades_disponiveis_promotor = []
 
 col_tit, col_sair = st.columns([3, 1])
 with col_tit:
@@ -679,7 +542,7 @@ elif dados_salvos:
     st.warning("📝 Rascunho salvo em aberto. Edição liberada.")
 
 # ==============================================================================
-# REGISTROS DIÁRIOS
+# REGISTROS DIÁRIOS (QUILOMETRAGEM)
 # ==============================================================================
 dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 detalhes_dias = []
@@ -690,104 +553,24 @@ mapa_dados_salvos = {}
 if dados_salvos and "detalhes" in dados_salvos:
     mapa_dados_salvos = {d["dia"]: d for d in dados_salvos["detalhes"]}
 
-st.markdown("### 📋 REGISTROS DIÁRIOS")
+st.markdown("### 📋 REGISTROS DIÁRIOS DE QUILOMETRAGEM")
 
 for i, dia_nome in enumerate(dias_semana):
     data_dia = (segunda + timedelta(days=i)).strftime("%d/%m")
     dados_dia_salvo = mapa_dados_salvos.get(dia_nome, {})
 
     with st.expander(f"📌 {dia_nome.upper()} ({data_dia})", expanded=(i == 0 or bool(dados_dia_salvo))):
-        col_sit, col_lei = st.columns([2, 1])
-        with col_sit:
-            sit_default = dados_dia_salvo.get("sit", "Normal")
-            idx_sit = SITUACOES.index(sit_default) if sit_default in SITUACOES else 0
-            sit_sel = st.selectbox(
-                f"Situação ({dia_nome})", 
-                SITUACOES, 
-                index=idx_sit, 
-                disabled=esta_finalizado,
-                key=f"sit_{dia_nome}"
-            )
-
-        with col_lei:
-            lei_default = dados_dia_salvo.get("leitura", False)
-            lei_sel = st.checkbox(
-                "Leituras?", 
-                value=lei_default, 
-                disabled=esta_finalizado,
-                key=f"lei_{dia_nome}"
-            )
+        sit_default = dados_dia_salvo.get("sit", "Normal")
+        idx_sit = SITUACOES.index(sit_default) if sit_default in SITUACOES else 0
+        sit_sel = st.selectbox(
+            f"Situação ({dia_nome})", 
+            SITUACOES, 
+            index=idx_sit, 
+            disabled=esta_finalizado,
+            key=f"sit_{dia_nome}"
+        )
 
         dia_eh_normal = (sit_sel == "Normal")
-        clientes_dia_selecionados = []
-        df_atendidos = pd.DataFrame()
-        km_sugerido_circuito = 0.0
-
-        if dia_eh_normal:
-            st.markdown("#### 🏬 LOJAS ATENDIDAS")
-            cods_salvos_dia = [str(c) for c in dados_dia_salvo.get("clientes", [])]
-            session_key_lojas = f"lojas_selecionadas_{dia_nome}"
-            if session_key_lojas not in st.session_state:
-                st.session_state[session_key_lojas] = cods_salvos_dia
-
-            if not DF_CLIENTES.empty:
-                for cid_norm in cidades_disponiveis_promotor:
-                    df_cidade = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_norm]
-                    if df_cidade.empty:
-                        continue
-                    
-                    nome_cidade_exibicao = df_cidade["CIDADE_RAW"].iloc[0]
-                    codigos_da_cidade = df_cidade["CÓDIGO"].tolist()
-                    defaults_cidade = [c for c in st.session_state[session_key_lojas] if c in codigos_da_cidade]
-
-                    with st.expander(f"🏙️ {nome_cidade_exibicao} ({len(df_cidade)} lojas)", expanded=bool(defaults_cidade)):
-                        escolhidos_cid = st.multiselect(
-                            f"Lojas em {nome_cidade_exibicao}:",
-                            options=codigos_da_cidade,
-                            default=defaults_cidade,
-                            disabled=esta_finalizado,
-                            format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
-                            key=f"cli_{dia_nome}_{cid_norm}"
-                        )
-                        clientes_dia_selecionados.extend(escolhidos_cid)
-
-                with st.expander("🌐 Outra Cidade / Fora da Rota", expanded=False):
-                    cidades_fora = [c for c in todas_cidades_norm if c not in cidades_disponiveis_promotor]
-                    cid_extra = st.selectbox(
-                        f"Escolha a cidade ({dia_nome}):", 
-                        ["-- Selecione --"] + cidades_fora, 
-                        disabled=esta_finalizado,
-                        key=f"extra_cid_{dia_nome}"
-                    )
-                    if cid_extra != "-- Selecione --":
-                        df_extra = DF_CLIENTES[DF_CLIENTES["CIDADE_NORM"] == cid_extra]
-                        cods_extra = df_extra["CÓDIGO"].tolist()
-                        defaults_extra = [c for c in st.session_state[session_key_lojas] if c in cods_extra]
-                        escolhidos_extra = st.multiselect(
-                            f"Lojas em {cid_extra}:",
-                            options=cods_extra,
-                            default=defaults_extra,
-                            disabled=esta_finalizado,
-                            format_func=lambda cod: MAPA_GERAL_NOMES.get(cod, f"Cód: {cod}"),
-                            key=f"cli_extra_{dia_nome}"
-                        )
-                        clientes_dia_selecionados.extend(escolhidos_extra)
-
-            clientes_dia_selecionados = list(dict.fromkeys(clientes_dia_selecionados))
-            st.session_state[session_key_lojas] = clientes_dia_selecionados
-
-            if clientes_dia_selecionados and not DF_CLIENTES.empty and "lat" in dados_promotor_atual:
-                df_atendidos = DF_CLIENTES[DF_CLIENTES["CÓDIGO"].isin(clientes_dia_selecionados)]
-                df_com_coord = df_atendidos.dropna(subset=["lat", "lon"])
-                if not df_com_coord.empty:
-                    pontos_visitas = list(zip(df_com_coord["lat"], df_com_coord["lon"]))
-                    km_sugerido_circuito = round(
-                        estimar_km_circuito_completo(dados_promotor_atual["lat"], dados_promotor_atual["lon"], pontos_visitas),
-                        1
-                    )
-        else:
-            st.markdown(f"<div style='color:#FDD818; padding:8px 0;'>⚠️ Dia registrado como <b>{sit_sel}</b>. Lojas desativadas.</div>", unsafe_allow_html=True)
-            clientes_dia_selecionados = []
 
         col_kmi, col_kmf = st.columns(2)
         with col_kmi:
@@ -805,8 +588,6 @@ for i, dia_nome in enumerate(dias_semana):
                 val_salvo_kmf = dados_dia_salvo.get("km_fim", None)
                 if val_salvo_kmf is not None and str(val_salvo_kmf) not in ["0", "0.0", ""]:
                     def_kmf = str_br_para_float(val_salvo_kmf)
-                elif km_sugerido_circuito > 0.0 and km_ini > 0.0:
-                    def_kmf = km_ini + km_sugerido_circuito
                 else:
                     def_kmf = def_kmi
             else:
@@ -819,9 +600,6 @@ for i, dia_nome in enumerate(dias_semana):
                 key=f"kmf_{dia_nome}"
             )
             km_fim = str_br_para_float(km_fim_str)
-
-        if dia_eh_normal and km_sugerido_circuito > 0.0 and not esta_finalizado:
-            st.markdown(f"<div style='color:#888; font-size:13px;'>💡 <b>Sugestão de rota:</b> ~{float_para_str_br(km_sugerido_circuito)} km (Ida e Volta). Editável livremente.</div>", unsafe_allow_html=True)
 
         km_dia = 0.0
         if dia_eh_normal and km_fim > 0.0:
@@ -836,74 +614,21 @@ for i, dia_nome in enumerate(dias_semana):
 
         km_total_calculado += km_dia
 
-        if dia_eh_normal and clientes_dia_selecionados and not df_atendidos.empty:
-            with st.expander(f"📍 Lojas Selecionadas ({len(clientes_dia_selecionados)})", expanded=True):
-                for _, row in df_atendidos.iterrows():
-                    st.markdown(f"• **{row['NOME']}** \n 🏠 {row['ENDEREÇO']} - {row['BAIRRO']}, {row['CIDADE_RAW']}/{row['UF']}")
-
-            df_coords = df_atendidos.dropna(subset=["lat", "lon"]).copy()
-
-            if not df_coords.empty and "lat" in dados_promotor_atual:
-                lat_casa = dados_promotor_atual["lat"]
-                lon_casa = dados_promotor_atual["lon"]
-
-                camada_casa = pdk.Layer(
-                    "ScatterplotLayer",
-                    data=pd.DataFrame([{"lat": lat_casa, "lon": lon_casa}]),
-                    get_position=["lon", "lat"],
-                    get_color=[0, 140, 255, 230],
-                    get_radius=800,
-                    pickable=True
-                )
-
-                camada_lojas = pdk.Layer(
-                    "ScatterplotLayer",
-                    data=df_coords,
-                    get_position=["lon", "lat"],
-                    get_color=[253, 216, 24, 230], 
-                    get_radius=500,
-                    pickable=True
-                )
-
-                linhas_circuito = []
-                coords_lista = list(zip(df_coords["lat"], df_coords["lon"]))
-                rota_pts = [(lat_casa, lon_casa)] + coords_lista + [(lat_casa, lon_casa)]
-                for idx_pt in range(len(rota_pts) - 1):
-                    linhas_circuito.append({
-                        "origem": [rota_pts[idx_pt][1], rota_pts[idx_pt][0]],
-                        "destino": [rota_pts[idx_pt+1][1], rota_pts[idx_pt+1][0]]
-                    })
-
-                camada_linhas = pdk.Layer(
-                    "LineLayer",
-                    data=pd.DataFrame(linhas_circuito),
-                    get_source_position="origem",
-                    get_target_position="destino",
-                    get_color=[255, 255, 255, 160], 
-                    get_width=3
-                )
-
-                viewport = pdk.ViewState(latitude=lat_casa, longitude=lon_casa, zoom=10, pitch=0)
-                st.pydeck_chart(pdk.Deck(layers=[camada_linhas, camada_casa, camada_lojas], initial_view_state=viewport, map_style="dark"))
-
         detalhes_dias.append({
             "dia": dia_nome,
             "data": data_dia,
             "km": km_dia,
             "sit": sit_sel,
-            "clientes": clientes_dia_selecionados,
-            "leitura": lei_sel,
             "km_ini": km_ini,
             "km_fim": km_fim
         })
 
 # ==============================================================================
-# GASTOS EXTRAS COM BOTÃO DINÂMICO "ADICIONAR DESPESA"
+# GASTOS EXTRAS COM DATA OBRIGATÓRIA E BOTÃO DINÂMICO
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 GASTOS EXTRAS")
 
-# Inicializar contador de gastos extras no session_state se não existir
 if "num_gastos_extras" not in st.session_state:
     gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
     st.session_state.num_gastos_extras = max(1, len(gastos_salvos_default))
@@ -913,12 +638,20 @@ for idx in range(st.session_state.num_gastos_extras):
     gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
     g_item = gastos_salvos_default[idx] if idx < len(gastos_salvos_default) else {}
     
-    col_desc, col_val, col_del = st.columns([3, 2, 0.8])
+    col_dt, col_desc, col_val = st.columns([1.2, 3, 2])
+    with col_dt:
+        g_data = st.text_input(
+            f"Data #{idx+1}",
+            value=g_item.get("data", segunda.strftime("%d/%m")),
+            placeholder="DD/MM",
+            disabled=esta_finalizado,
+            key=f"gdata_{idx}"
+        )
     with col_desc:
         g_desc = st.text_input(
-            f"Despesa #{idx+1}", 
+            f"Descrição #{idx+1}", 
             value=g_item.get("desc", ""), 
-            placeholder="Ex: Estacionamento, Refeição...", 
+            placeholder="Ex: Estacionamento, Almoço...", 
             disabled=esta_finalizado,
             key=f"gdesc_{idx}"
         )
@@ -934,8 +667,8 @@ for idx in range(st.session_state.num_gastos_extras):
         )
         v_float = str_br_para_float(g_val_txt)
 
-    if g_desc.strip() and v_float > 0:
-        gastos_extras.append({"desc": g_desc.strip(), "valor": v_float})
+    if g_desc.strip() and v_float > 0 and g_data.strip():
+        gastos_extras.append({"data": g_data.strip(), "desc": g_desc.strip(), "valor": v_float})
 
 if not esta_finalizado:
     if st.button("➕ ADICIONAR OUTRA DESPESA EXTRA"):
@@ -996,7 +729,7 @@ if not esta_finalizado:
             HISTORICO_GERAL[chave_registro] = payload
             sucesso = salvar_base_historico_github(
                 HISTORICO_GERAL, 
-                sha_existental=SHA_GERAL,
+                sha_existente=SHA_GERAL,
                 mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
             )
             if sucesso:
