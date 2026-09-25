@@ -411,15 +411,15 @@ if is_area_teste:
 
         sucessos = 0
         for p_nome in promotores_alvo:
-            dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+            dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
             detalhes_ficticios = []
             km_tot_fict = 0.0
             km_base = 100.0
 
             for idx_d, d_nome in enumerate(dias_semana):
                 dt_d = (seg_t + timedelta(days=idx_d)).strftime("%d/%m")
-                sit_f = "Normal" if idx_d not in [5, 6] else "Folga"
-                km_d_f = 0.0 if sit_f != "Normal" else round(random.uniform(45.0, 95.0), 1)
+                sit_f = "Normal"
+                km_d_f = round(random.uniform(45.0, 95.0), 1)
                 kmi_f = km_base
                 kmf_f = km_base + km_d_f
                 km_base = kmf_f
@@ -544,16 +544,31 @@ elif dados_salvos:
 # ==============================================================================
 # REGISTROS DIÁRIOS (QUILOMETRAGEM)
 # ==============================================================================
-dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
-detalhes_dias = []
-km_total_calculado = 0.0
-km_fim_anterior = 0.0
+st.markdown("### 📋 REGISTROS DIÁRIOS DE QUILOMETRAGEM")
 
+# Verificar se já existem dados salvos de sábado ou domingo no histórico
 mapa_dados_salvos = {}
 if dados_salvos and "detalhes" in dados_salvos:
     mapa_dados_salvos = {d["dia"]: d for d in dados_salvos["detalhes"]}
 
-st.markdown("### 📋 REGISTROS DIÁRIOS DE QUILOMETRAGEM")
+tem_sabado_salvo = "Sábado" in mapa_dados_salvos
+tem_domingo_salvo = "Domingo" in mapa_dados_salvos
+
+col_flag1, col_flag2 = st.columns(2)
+with col_flag1:
+    habilitar_sabado = st.checkbox("📅 Habilitar Sábado", value=tem_sabado_salvo, disabled=esta_finalizado)
+with col_flag2:
+    habilitar_domingo = st.checkbox("📅 Habilitar Domingo", value=tem_domingo_salvo, disabled=esta_finalizado)
+
+dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+if habilitar_sabado:
+    dias_semana.append("Sábado")
+if habilitar_domingo:
+    dias_semana.append("Domingo")
+
+detalhes_dias = []
+km_total_calculado = 0.0
+km_fim_anterior = 0.0
 
 for i, dia_nome in enumerate(dias_semana):
     data_dia = (segunda + timedelta(days=i)).strftime("%d/%m")
