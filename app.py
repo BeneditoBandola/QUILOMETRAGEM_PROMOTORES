@@ -132,14 +132,21 @@ EMAIL_PRINCIPAL = "benedito.bandola@minassal.com.br"
 EMAIL_REMETENTE = "beneditobandola@gmail.com"
 VALOR_KM_TAXA = 1.17
 ARQUIVO_JSON_GERAL = "historico_km_geral.json"
-NOME_LOGOTIPO = "MINASSAL_LOGOS-03.jpg"
+NOME_LOGOTIPO = "MINASSAL_LOGOS-04.png"
 
 def obter_imagem_reportlab_forçada(caminho_logo):
-    if not os.path.exists(caminho_logo):
+    candidatos = [caminho_logo, "MINASSAL_LOGOS-04.png", "MINASSAL_LOGOS-03.jpg", "minassal_logos-04.png"]
+    arquivo_encontrado = None
+    for c in candidatos:
+        if os.path.exists(c):
+            arquivo_encontrado = c
+            break
+
+    if not arquivo_encontrado:
         return None
+
     try:
-        # Abre a imagem original e remove transparências criando um fundo branco puro
-        img_pil = PILImage.open(caminho_logo)
+        img_pil = PILImage.open(arquivo_encontrado)
         if img_pil.mode in ("RGBA", "LA") or (img_pil.mode == "P" and "transparency" in img_pil.info):
             fundo_branco = PILImage.new("RGB", img_pil.size, (255, 255, 255))
             if img_pil.mode == "P":
@@ -149,12 +156,12 @@ def obter_imagem_reportlab_forçada(caminho_logo):
         else:
             img_pil = img_pil.convert("RGB")
         
-        # Salva em um buffer em formato PNG (que o ReportLab aceita sem restrições de compressão JPEG)
         buffer = BytesIO()
         img_pil.save(buffer, format="PNG")
         buffer.seek(0)
         
-        img_rl = Image(buffer, width=100, height=45, preserveAspectRatio=True)
+        # Como o novo logo é horizontal, ajustamos largura e altura proporcionais para o cabeçalho
+        img_rl = Image(buffer, width=110, height=45, preserveAspectRatio=True)
         img_rl.hAlign = 'LEFT'
         return img_rl
     except Exception:
@@ -198,7 +205,7 @@ def adicionar_rodape(canvas, doc):
     canvas.saveState()
     canvas.setFont('Helvetica', 8)
     canvas.setFillColor(colors.HexColor('#666666'))
-    texto_rodape = "Minassal Distribuidora — Sistema de Controle de KM | Desenvolvido por Benedito Bandola"
+    texto_rodape = "Desenvolvido por Benedito Bandola"
     canvas.drawRightString(A4[0] - 30, 15, texto_rodape)
     canvas.restoreState()
 
@@ -236,9 +243,9 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
 
     logo_obj = obter_imagem_reportlab_forçada(NOME_LOGOTIPO)
     if logo_obj:
-        t_cabecalho = Table([[logo_obj, col_dir_elementos]], colWidths=[110, 424])
+        t_cabecalho = Table([[logo_obj, col_dir_elementos]], colWidths=[120, 414])
     else:
-        t_cabecalho = Table([["", col_dir_elementos]], colWidths=[110, 424])
+        t_cabecalho = Table([["", col_dir_elementos]], colWidths=[120, 414])
 
     t_cabecalho.setStyle(TableStyle([
         ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
@@ -840,4 +847,4 @@ if not esta_finalizado:
                 st.rerun()
 
 # Rodapé discreto na interface com autoria
-st.markdown("<br><hr><p style='text-align: center; color: #555555; font-size: 11px;'>Minassal — Controle de KM | Desenvolvido por Benedito Bandola</p>", unsafe_allow_html=True)
+st.markdown("<br><hr><p style='text-align: center; color: #555555; font-size: 11px;'>Desenvolvido por Benedito Bandola</p>", unsafe_allow_html=True)
