@@ -161,7 +161,6 @@ def calcular_intervalo_semana(num_semana, ano=None):
     return segunda, domingo
 
 def obter_semana_padrao_inteligente():
-    """Retorna a semana atual, mantendo a semana anterior até segunda-feira às 12:00."""
     agora = datetime.now()
     semana_padrao = agora.isocalendar()[1]
     if agora.weekday() == 0 and agora.hour < 12:
@@ -459,7 +458,7 @@ is_admin_benedito = ("Benedito Bandola" in promotor_sel)
 is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 
 # ==============================================================================
-# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - COM JUSTIFICATIVA DE EXCLUSÃO
+# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA)
 # ==============================================================================
 if is_admin_benedito:
     st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA E AUDITORIA</h2>", unsafe_allow_html=True)
@@ -471,9 +470,6 @@ if is_admin_benedito:
 
     st.divider()
 
-    # ==========================================================================
-    # FERRAMENTA DE EXCLUSÃO COM JUSTIFICATIVA OBRIGATÓRIA
-    # ==========================================================================
     with st.expander("🗑️ EXCLUIR LANÇAMENTO DE UM PROMOTOR (COM JUSTIFICATIVA)", expanded=False):
         if HISTORICO_GERAL:
             chaves_existentes_del = sorted(list(HISTORICO_GERAL.keys()))
@@ -507,9 +503,6 @@ if is_admin_benedito:
         else:
             st.info("Nenhum registro para excluir.")
 
-    # ==========================================================================
-    # FERRAMENTA DE RECLASSIFICAÇÃO DE SEMANA
-    # ==========================================================================
     with st.expander("🔄 RECLASSIFICAR SEMANA DE UM LANÇAMENTO (EX: CORRIGIR 40 PARA 39)", expanded=False):
         if HISTORICO_GERAL:
             chaves_existentes = sorted(list(HISTORICO_GERAL.keys()))
@@ -916,7 +909,7 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS COM BOTÃO DE ADICIONAR E BOTÃO DE APAGAR POR LINHA
+# GASTOS EXTRAS
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 GASTOS EXTRAS")
@@ -938,43 +931,58 @@ for idx, g_item in enumerate(st.session_state.lista_gastos_extras):
     col_dt, col_desc, col_val, col_del = st.columns([1.2, 2.6, 1.8, 1])
     
     with col_dt:
-        g_data = st.text_input(
-            f"Data #{idx+1}",
-            value=g_item.get("data", segunda.strftime("%d/%m")),
-            placeholder="DD/MM",
+        try:
+            data_salva_obj = datetime.strptime(g_item.get("data", segunda.strftime("%d/%m") + f"/{segunda.year}"), "%d/%m/%Y").date()
+        except Exception:
+            data_salva_obj = segunda.date()
+
+        min_dt = segunda.date()
+        max_dt = domingo.date()
+        if data_salva_obj < min_dt or data_salva_obj > max_dt:
+            data_salva_obj = min_dt
+
+        g_data_obj = st.date_input(
+            "Data",
+            value=data_salva_obj,
+            min_value=min_dt,
+            max_value=max_dt,
             disabled=esta_finalizado,
-            key=f"gdata_{idx}"
+            key=f"gdata_{idx}",
+            label_visibility="collapsed"
         )
+        g_data_str = g_data_obj.strftime("%d/%m")
+
     with col_desc:
         g_desc = st.text_input(
-            f"Descrição #{idx+1}", 
+            "Descrição", 
             value=g_item.get("desc", ""), 
             placeholder="Ex: Almoço...", 
             disabled=esta_finalizado,
-            key=f"gdesc_{idx}"
+            key=f"gdesc_{idx}",
+            label_visibility="collapsed"
         )
     with col_val:
         v_salvo_num = g_item.get("valor", 0.0)
         v_salvo_txt = float_para_str_br(v_salvo_num) if v_salvo_num > 0 else ""
         g_val_txt = st.text_input(
-            f"Valor R$ #{idx+1}", 
+            "Valor R$", 
             value=v_salvo_txt, 
             placeholder="0,00", 
             disabled=esta_finalizado,
-            key=f"gval_{idx}"
+            key=f"gval_{idx}",
+            label_visibility="collapsed"
         )
         v_float = str_br_para_float(g_val_txt)
 
     with col_del:
-        st.write("")
         st.write("")
         if not esta_finalizado:
             if st.button("🗑️ Apagar", key=f"del_gasto_{idx}"):
                 st.session_state.lista_gastos_extras.pop(idx)
                 st.rerun()
 
-    if g_desc.strip() and v_float > 0 and g_data.strip():
-        gastos_extras.append({"data": g_data.strip(), "desc": g_desc.strip(), "valor": v_float})
+    if g_desc.strip() and v_float > 0:
+        gastos_extras.append({"data": g_data_str, "desc": g_desc.strip(), "valor": v_float})
 
 # ==============================================================================
 # RESUMO FINANCEIRO
@@ -1025,8 +1033,9 @@ if not esta_finalizado:
                 st.rerun()
 
     with col_btn2:
-        # Checkbox obrigatório para confirmação dos dados
-        termo_aceito = st.checkbox("Confirmo os dados acima e estou ciente de que sou integralmente responsável pelas informações prestadas neste envio.")
+        # Exibe o texto completo em destaque acima da caixinha para evitar cortes
+        st.markdown("<p style='font-size: 13px; color: #EDEDED; line-height: 1.4; margin-bottom: 8px;'>Confirmo os dados acima e estou ciente de que sou integralmente responsável pelas informações prestadas neste envio.</p>", unsafe_allow_html=True)
+        termo_aceito = st.checkbox("Li e concordo com o termo acima")
         
         if st.button("FINALIZAR SEMANA 🚀", type="primary"):
             if not termo_aceito:
