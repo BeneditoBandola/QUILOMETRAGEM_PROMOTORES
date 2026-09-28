@@ -124,6 +124,7 @@ DADOS_PROMOTORES = {
 PROMOTORES = list(DADOS_PROMOTORES.keys())
 SITUACOES = ['Normal', 'Férias', 'Carro Quebrado', 'Feriado', 'Atestado Médico', 'Folga', 'Falta']
 EMAIL_PRINCIPAL = "benedito.bandola@minassal.com.br"
+EMAIL_ADRIANA = "adriana@minassal.com.br"
 EMAIL_REMETENTE = "beneditobandola@gmail.com"
 VALOR_KM_TAXA = 1.17
 ARQUIVO_JSON_GERAL = "historico_km_geral.json"
@@ -296,11 +297,11 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     doc.build(elementos, onFirstPage=adicionar_rodape, onLaterPages=adicionar_rodape)
 
 # ==============================================================================
-# FUNÇÃO DE ENVIO DE E-MAIL COM ANEXO PDF
+# FUNÇÃO DE ENVIO DE E-MAIL COM ANEXO PDF (INCLUINDO ADRIANA)
 # ==============================================================================
 def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     destinatario_promotor = DADOS_PROMOTORES.get(promotor_nome, {}).get("email", "")
-    destinatarios = [EMAIL_PRINCIPAL]
+    destinatarios = [EMAIL_PRINCIPAL, EMAIL_ADRIANA]
     if destinatario_promotor:
         destinatarios.append(destinatario_promotor)
 
@@ -909,7 +910,7 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS (ATUALIZADO COM DATA DD/MM E BOTÃO LARGO "APAGAR")
+# GASTOS EXTRAS
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 GASTOS EXTRAS")
