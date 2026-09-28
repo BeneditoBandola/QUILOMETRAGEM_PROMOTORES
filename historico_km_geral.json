@@ -938,7 +938,7 @@
         ]
     },
     "Pamela Camila de Almeida Alexandrino_S39": {
-        "id": 1790556670,
+        "id": 1790557250,
         "semana_ref": "39",
         "intervalo_datas": "21/09 a 27/09",
         "promotor": "Pamela Camila de Almeida Alexandrino",
@@ -946,9 +946,30 @@
         "is_teste": false,
         "km_total": 584.3,
         "valor_km": 683.6309999999999,
-        "valor_extras": 0,
-        "valor_total": 683.6309999999999,
-        "gastos_extras": [],
+        "valor_extras": 155.76,
+        "valor_total": 839.3909999999998,
+        "gastos_extras": [
+            {
+                "data": "24/09",
+                "desc": "Pedágio  ida e volta   15,80 cada / três corações",
+                "valor": 31.6
+            },
+            {
+                "data": "25/09",
+                "desc": "Pedágio ida e volta 10,10 cada / andradas",
+                "valor": 20.2
+            },
+            {
+                "data": "25/09",
+                "desc": "Bolo evento fertsolo",
+                "valor": 72.0
+            },
+            {
+                "data": "25/09",
+                "desc": "Refrigerante evento fertsolo",
+                "valor": 31.96
+            }
+        ],
         "detalhes": [
             {
                 "dia": "Segunda",
