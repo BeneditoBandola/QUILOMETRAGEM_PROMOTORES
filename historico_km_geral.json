@@ -1013,61 +1013,6 @@
             }
         ]
     },
-    "Fernanda Dias Ferreira_S40": {
-        "id": 1790558835,
-        "semana_ref": "40",
-        "intervalo_datas": "28/09 a 04/10",
-        "promotor": "Fernanda Dias Ferreira",
-        "status": "FINALIZADO",
-        "is_teste": false,
-        "km_total": 216.0,
-        "valor_km": 252.71999999999997,
-        "valor_extras": 0,
-        "valor_total": 252.71999999999997,
-        "gastos_extras": [],
-        "detalhes": [
-            {
-                "dia": "Segunda",
-                "data": "28/09",
-                "km": 32.0,
-                "sit": "Normal",
-                "km_ini": 82456.0,
-                "km_fim": 82488.0
-            },
-            {
-                "dia": "Terça",
-                "data": "29/09",
-                "km": 54.0,
-                "sit": "Normal",
-                "km_ini": 82488.0,
-                "km_fim": 82542.0
-            },
-            {
-                "dia": "Quarta",
-                "data": "30/09",
-                "km": 62.0,
-                "sit": "Normal",
-                "km_ini": 82542.0,
-                "km_fim": 82604.0
-            },
-            {
-                "dia": "Quinta",
-                "data": "01/10",
-                "km": 51.0,
-                "sit": "Normal",
-                "km_ini": 82604.0,
-                "km_fim": 82655.0
-            },
-            {
-                "dia": "Sexta",
-                "data": "02/10",
-                "km": 17.0,
-                "sit": "Normal",
-                "km_ini": 82655.0,
-                "km_fim": 82672.0
-            }
-        ]
-    },
     "Madalla Teixeira Reis_S39": {
         "id": 1790591147,
         "semana_ref": "39",
@@ -1120,6 +1065,61 @@
                 "sit": "Normal",
                 "km_ini": 82448.0,
                 "km_fim": 82499.0
+            }
+        ]
+    },
+    "Fernanda Dias Ferreira_S39": {
+        "id": 1790558835,
+        "semana_ref": "39",
+        "intervalo_datas": "21/09 a 27/09",
+        "promotor": "Fernanda Dias Ferreira",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 216.0,
+        "valor_km": 252.71999999999997,
+        "valor_extras": 0,
+        "valor_total": 252.71999999999997,
+        "gastos_extras": [],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "28/09",
+                "km": 32.0,
+                "sit": "Normal",
+                "km_ini": 82456.0,
+                "km_fim": 82488.0
+            },
+            {
+                "dia": "Terça",
+                "data": "29/09",
+                "km": 54.0,
+                "sit": "Normal",
+                "km_ini": 82488.0,
+                "km_fim": 82542.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "30/09",
+                "km": 62.0,
+                "sit": "Normal",
+                "km_ini": 82542.0,
+                "km_fim": 82604.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "01/10",
+                "km": 51.0,
+                "sit": "Normal",
+                "km_ini": 82604.0,
+                "km_fim": 82655.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "02/10",
+                "km": 17.0,
+                "sit": "Normal",
+                "km_ini": 82655.0,
+                "km_fim": 82672.0
             }
         ]
     }
