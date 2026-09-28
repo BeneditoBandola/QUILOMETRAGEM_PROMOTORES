@@ -417,16 +417,16 @@ def salvar_base_historico_github(historico_dict, sha_existente=None, mensagem_co
 HISTORICO_GERAL, SHA_GERAL = carregar_base_historico_github()
 
 # ==============================================================================
-# TELA DE IDENTIFICAÇÃO (COM OPÇÃO DE ÁREA DE TESTES)
+# TELA DE IDENTIFICAÇÃO (COM OPÇÃO DE ÁREA DE TESTES E PAINEL DO BENEDITO)
 # ==============================================================================
 if "usuario_ativo" not in st.session_state:
     st.session_state.usuario_ativo = None
 
 if not st.session_state.usuario_ativo:
     st.markdown("<h1 style='text-align: center; color: #FDD818 !important;'># ACESSO DE PROMOTORES</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center; color: #888;'>SELECIONE SEU PERFIL OU ENTRE NA ÁREA DE TESTES</p>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #888;'>SELECIONE SEU PERFIL OU ENTRE NA ÁREA DE GESTÃO</p>", unsafe_allow_html=True)
     
-    opcoes_acesso = ["-- Selecione seu perfil ou área --", "🧪 [ÁREA DE TESTES / SIMULAÇÃO]"] + PROMOTORES
+    opcoes_acesso = ["-- Selecione seu perfil ou área --", "👑 Benedito Bandola (Painel de Gestão)", "🧪 [ÁREA DE TESTES / SIMULAÇÃO]"] + PROMOTORES
     escolha_promotor = st.selectbox("QUEM É VOCÊ?", options=opcoes_acesso)
     
     if st.button("ACESSAR SISTEMA ➔", type="primary"):
@@ -438,8 +438,125 @@ if not st.session_state.usuario_ativo:
     st.stop()
 
 promotor_sel = st.session_state.usuario_ativo
+is_admin_benedito = ("Benedito Bandola" in promotor_sel)
 is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 
+# ==============================================================================
+# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA)
+# ==============================================================================
+if is_admin_benedito:
+    st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA GERAL</h2>", unsafe_allow_html=True)
+    st.caption("Central de auditoria de quilometragens, despesas e reembolsos de todos os promotores.")
+    
+    if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
+        st.session_state.usuario_ativo = None
+        st.rerun()
+
+    st.divider()
+
+    if not HISTORICO_GERAL:
+        st.info("Nenhum lançamento registrado no sistema até o momento.")
+        st.stop()
+
+    # Filtros na Gestão
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        filtro_promotor = st.selectbox("Filtrar por Promotor:", options=["Todos os Promotores"] + PROMOTORES)
+    with col_f2:
+        semanas_disponiveis = sorted(list(set([v.get("semana_ref") for v in HISTORICO_GERAL.values() if "semana_ref" in v])), key=lambda x: int(x) if x.isdigit() else 0)
+        filtro_semana = st.selectbox("Filtrar por Semana:", options=["Todas as Semanas"] + [f"Semana {s}" for s in semanas_disponiveis])
+
+    # Consolidar dados para a tabela
+    tabela_registros = []
+    for chave, dados in HISTORICO_GERAL.items():
+        p_nome = dados.get("promotor", "Desconhecido")
+        s_num = dados.get("semana_ref", "0")
+        
+        if filtro_promotor != "Todos os Promotores" and p_nome != filtro_promotor:
+            continue
+        if filtro_semana != "Todas as Semanas" and f"Semana {s_num}" != filtro_semana:
+            continue
+            
+        tabela_registros.append({
+            "Chave": chave,
+            "Promotor": p_nome,
+            "Semana": f"S{s_num}",
+            "Período": dados.get("intervalo_datas", ""),
+            "Status": dados.get("status", "RASCUNHO"),
+            "KM Total": dados.get("km_total", 0.0),
+            "Valor KM (R$)": dados.get("valor_km", 0.0),
+            "Extras (R$)": dados.get("valor_extras", 0.0),
+            "Total (R$)": dados.get("valor_total", 0.0)
+        })
+
+    if not tabela_registros:
+        st.warning("Nenhum registro encontrado com os filtros selecionados.")
+    else:
+        df_resumo = pd.DataFrame(tabela_registros)
+        
+        # Métricas Gerais do Filtro
+        total_km_geral = df_resumo["KM Total"].sum()
+        total_pago_geral = df_resumo["Total (R$)"].sum()
+        
+        m1, m2, m3 = st.columns(3)
+        m1.metric("LANÇAMENTOS FILTRADOS", len(df_resumo))
+        m2.metric("TOTAL KM RODADO", f"{float_para_str_br(total_km_geral)} km")
+        m3.metric("VALOR TOTAL GERAL", f"R$ {float_para_str_br(total_pago_geral)}")
+
+        st.write("")
+        st.markdown("### 📋 TABELA CONSOLIDADA")
+        
+        # Exibição limpa em formato de tabela ajustada
+        df_exibicao = df_resumo[["Promotor", "Semana", "Período", "Status", "KM Total", "Total (R$)"]].copy()
+        df_exibicao["KM Total"] = df_exibicao["KM Total"].apply(lambda x: f"{float_para_str_br(x)} km")
+        df_exibicao["Total (R$)"] = df_exibicao["Total (R$)"].apply(lambda x: f"R$ {float_para_str_br(x)}")
+        st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
+
+        # Botão para download de CSV
+        csv_data = df_resumo.to_csv(index=False, encoding='utf-8-sig').encode('utf-8')
+        st.download_button(
+            label="📥 BAIXAR DADOS EM FORMATO CSV (EXCEL)",
+            data=csv_data,
+            file_name=f"relatorio_km_minassal_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            mime="text/csv"
+        )
+
+        st.divider()
+        st.markdown("### 🔍 INSPEÇÃO DETALHADA POR LANÇAMENTO")
+        
+        # Selecionar chave específica para ver dia a dia e despesas
+        chave_selecionada = st.selectbox("Selecione um lançamento para inspecionar:", options=df_resumo["Chave"].tolist())
+        
+        if chave_selecionada:
+            detalhe_item = HISTORICO_GERAL.get(chave_selecionada, {})
+            st.markdown(f"**Promotor:** {detalhe_item.get('promotor')} | **Semana:** {detalhe_item.get('semana_ref')} ({detalhe_item.get('intervalo_datas')}) | **Status:** {detalhe_item.get('status')}")
+            
+            # Detalhes diários
+            dias_det = detalhe_item.get("detalhes", [])
+            if dias_det:
+                st.markdown("**Quilometragem Diária:**")
+                df_dias = pd.DataFrame(dias_det)
+                # Reorganizar colunas se existirem
+                cols_mostrar = [c for c in ["dia", "data", "sit", "km_ini", "km_fim", "km"] if c in df_dias.columns]
+                df_dias_ex = df_dias[cols_mostrar].rename(columns={
+                    "dia": "Dia", "data": "Data", "sit": "Situação", "km_ini": "KM Inicial", "km_fim": "KM Final", "km": "KM Rodado"
+                })
+                st.dataframe(df_dias_ex, use_container_width=True, hide_index=True)
+            
+            # Gastos extras
+            gastos_det = detalhe_item.get("gastos_extras", [])
+            if gastos_det:
+                st.markdown("**Gastos Extras Registrados:**")
+                df_gastos = pd.DataFrame(gastos_det)
+                st.dataframe(df_gastos, use_container_width=True, hide_index=True)
+            else:
+                st.info("Nenhum gasto extra registrado neste lançamento.")
+
+    st.stop()
+
+# ==============================================================================
+# ÁREA DE TESTES
+# ==============================================================================
 if is_area_teste:
     st.markdown("### 🧪 ÁREA DE TESTES E SIMULAÇÃO")
     st.info("Escolha abaixo o promotor (ou todos em lote), informe a semana e clique para gerar e disparar os testes de e-mail com PDF.")
@@ -508,7 +625,7 @@ if is_area_teste:
             st.success(f"✅ Testes executados com sucesso! {sucessos} relatório(s) gerado(s) e e-mail(s) disparado(s).")
             st.balloons()
         else:
-            st.warning("Houve falha ao salvar no GitHub ou disparar os e-mails.")
+            st.warning("Houve falha ao salvar no GitHub ou disparar os e-mais.")
 
     st.write("")
     if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
@@ -704,7 +821,6 @@ for i, dia_nome in enumerate(dias_semana):
 st.divider()
 st.markdown("### 💰 GASTOS EXTRAS")
 
-# Inicializa a lista de gastos extras na sessão se não existir
 if "lista_gastos_extras" not in st.session_state:
     gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
     if gastos_salvos_default:
@@ -712,7 +828,6 @@ if "lista_gastos_extras" not in st.session_state:
     else:
         st.session_state.lista_gastos_extras = []
 
-# Botão para habilitar/adicionar novo gasto extra
 if not esta_finalizado:
     if st.button("➕ ADICIONAR DESPESA EXTRA"):
         st.session_state.lista_gastos_extras.append({"data": segunda.strftime("%d/%m"), "desc": "", "valor": 0.0})
@@ -751,7 +866,7 @@ for idx, g_item in enumerate(st.session_state.lista_gastos_extras):
         v_float = str_br_para_float(g_val_txt)
 
     with col_del:
-        st.write("") # alinhamento vertical
+        st.write("")
         st.write("")
         if not esta_finalizado:
             if st.button("🗑️ Apagar", key=f"del_gasto_{idx}"):
@@ -827,5 +942,4 @@ if not esta_finalizado:
                 st.balloons()
                 st.rerun()
 
-# Rodapé discreto na interface com autoria
 st.markdown("<br><hr><p style='text-align: center; color: #555555; font-size: 11px;'>Desenvolvido por Benedito Bandola</p>", unsafe_allow_html=True)
