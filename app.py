@@ -306,17 +306,17 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     is_teste = payload_dados.get("is_teste", False)
     sufixo_assunto = " [TESTE]" if is_teste else ""
 
-    nome_arq_pdf = f"Resumo_Financeiro_Semana_{num_semana}_{promotor_nome.replace(' ', '_')}.pdf"
+    nome_arq_pdf = f"Resumo_Financeiro_Semana_{semana_num}_{promotor_nome.replace(' ', '_')}.pdf"
     gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, nome_arq_pdf)
 
-    assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {num_semana} - {promotor_nome}"
+    assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {semana_num} - {promotor_nome}"
     
     corpo_html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333;">
         <h2 style="color: #134074;">Minassal - Fechamento de KM e Reembolso {sufixo_assunto}</h2>
         <p><b>Promotor(a):</b> {promotor_nome}</p>
-        <p><b>Semana de Referência:</b> Semana {num_semana} ({intervalo})</p>
+        <p><b>Semana de Referência:</b> Semana {semana_num} ({intervalo})</p>
         <hr/>
         <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM e despesas extras.</p>
         <p><b>Valor Total a Pagar: R$ {float_para_str_br(payload_dados['valor_total'])}</b></p>
@@ -442,11 +442,11 @@ is_admin_benedito = ("Benedito Bandola" in promotor_sel)
 is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 
 # ==============================================================================
-# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA)
+# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - FOCO EM SELEÇÃO DE SEMANA
 # ==============================================================================
 if is_admin_benedito:
-    st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA GERAL</h2>", unsafe_allow_html=True)
-    st.caption("Central de auditoria de quilometragens, despesas e reembolsos de todos os promotores.")
+    st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA POR SEMANA</h2>", unsafe_allow_html=True)
+    st.caption("Selecione a semana desejada para visualizar os quilômetros, despesas e status de todos os promotores.")
     
     if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
         st.session_state.usuario_ativo = None
@@ -458,85 +458,99 @@ if is_admin_benedito:
         st.info("Nenhum lançamento registrado no sistema até o momento.")
         st.stop()
 
-    # Filtros na Gestão
-    col_f1, col_f2 = st.columns(2)
-    with col_f1:
-        filtro_promotor = st.selectbox("Filtrar por Promotor:", options=["Todos os Promotores"] + PROMOTORES)
-    with col_f2:
-        semanas_disponiveis = sorted(list(set([v.get("semana_ref") for v in HISTORICO_GERAL.values() if "semana_ref" in v])), key=lambda x: int(x) if x.isdigit() else 0)
-        filtro_semana = st.selectbox("Filtrar por Semana:", options=["Todas as Semanas"] + [f"Semana {s}" for s in semanas_disponiveis])
+    # Extrair semanas cadastradas ordenadas
+    semanas_cadastradas = sorted(
+        list(set([v.get("semana_ref") for v in HISTORICO_GERAL.values() if "semana_ref" in v])), 
+        key=lambda x: int(x) if x.isdigit() else 0
+    )
 
-    # Consolidar dados para a tabela
+    if not semanas_cadastradas:
+        st.warning("Nenhuma semana encontrada nos registros.")
+        st.stop()
+
+    # SELEÇÃO PRINCIPAL DA SEMANA
+    semana_atual_default = int(datetime.now().isocalendar()[1])
+    opcoes_semanas_fmt = [f"Semana {s}" for s in semanas_cadastradas]
+    
+    # Tenta selecionar a semana atual por padrão se existir na lista, senão a primeira
+    default_index = 0
+    s_atual_str = f"Semana {semana_atual_default}"
+    if s_atual_str in opcoes_semanas_fmt:
+        default_index = opcoes_semanas_fmt.index(s_atual_str)
+
+    semana_escolhida_str = st.selectbox("📅 SELECIONE A SEMANA PARA CONSULTA:", options=opcoes_semanas_fmt, index=default_index)
+    num_semana_sel = semana_escolhida_str.replace("Semana ", "")
+
+    seg_sel, dom_sel = calcular_intervalo_semana(int(num_semana_sel))
+    intervalo_sel_str = f"{seg_sel.strftime('%d/%m')} a {dom_sel.strftime('%d/%m')}"
+    st.markdown(f"<div style='padding:8px 14px; background:#141414; border-left:4px solid #FDD818; margin-bottom:15px;'>📌 <b>PERÍODO DA SEMANA {num_semana_sel}:</b> {intervalo_sel_str}</div>", unsafe_allow_html=True)
+
+    # Filtrar registros apenas da semana escolhida
     tabela_registros = []
     for chave, dados in HISTORICO_GERAL.items():
-        p_nome = dados.get("promotor", "Desconhecido")
-        s_num = dados.get("semana_ref", "0")
-        
-        if filtro_promotor != "Todos os Promotores" and p_nome != filtro_promotor:
-            continue
-        if filtro_semana != "Todas as Semanas" and f"Semana {s_num}" != filtro_semana:
-            continue
-            
-        tabela_registros.append({
-            "Chave": chave,
-            "Promotor": p_nome,
-            "Semana": f"S{s_num}",
-            "Período": dados.get("intervalo_datas", ""),
-            "Status": dados.get("status", "RASCUNHO"),
-            "KM Total": dados.get("km_total", 0.0),
-            "Valor KM (R$)": dados.get("valor_km", 0.0),
-            "Extras (R$)": dados.get("valor_extras", 0.0),
-            "Total (R$)": dados.get("valor_total", 0.0)
-        })
+        if dados.get("semana_ref") == str(num_semana_sel):
+            tabela_registros.append({
+                "Chave": chave,
+                "Promotor": dados.get("promotor", "Desconhecido"),
+                "Status": dados.get("status", "RASCUNHO"),
+                "KM Total": dados.get("km_total", 0.0),
+                "Valor KM (R$)": dados.get("valor_km", 0.0),
+                "Extras (R$)": dados.get("valor_extras", 0.0),
+                "Total (R$)": dados.get("valor_total", 0.0),
+                "DadosCompletos": dados
+            })
 
     if not tabela_registros:
-        st.warning("Nenhum registro encontrado com os filtros selecionados.")
+        st.warning(f"Nenhum lançamento encontrado para a Semana {num_semana_sel}.")
     else:
         df_resumo = pd.DataFrame(tabela_registros)
         
-        # Métricas Gerais do Filtro
-        total_km_geral = df_resumo["KM Total"].sum()
-        total_pago_geral = df_resumo["Total (R$)"].sum()
+        # Métricas Globais da Semana Selecionada
+        total_km_semana = df_resumo["KM Total"].sum()
+        total_pago_semana = df_resumo["Total (R$)"].sum()
+        total_promotores_enviados = len(df_resumo[df_resumo["Status"] == "FINALIZADO"])
         
         m1, m2, m3 = st.columns(3)
-        m1.metric("LANÇAMENTOS FILTRADOS", len(df_resumo))
-        m2.metric("TOTAL KM RODADO", f"{float_para_str_br(total_km_geral)} km")
-        m3.metric("VALOR TOTAL GERAL", f"R$ {float_para_str_br(total_pago_geral)}")
+        m1.metric("PROMOTORES LANÇARAM", f"{len(df_resumo)} / {len(PROMOTORES)}")
+        m2.metric("TOTAL KM DA SEMANA", f"{float_para_str_br(total_km_semana)} km")
+        m3.metric("VALOR TOTAL DA SEMANA", f"R$ {float_para_str_br(total_pago_semana)}")
 
         st.write("")
-        st.markdown("### 📋 TABELA CONSOLIDADA")
+        st.markdown(f"### 📋 RESUMO DOS PROMOTORES — {semana_escolhida_str.upper()}")
         
-        # Exibição limpa em formato de tabela ajustada
-        df_exibicao = df_resumo[["Promotor", "Semana", "Período", "Status", "KM Total", "Total (R$)"]].copy()
+        # Tabela limpa para visualização rápida da semana
+        df_exibicao = df_resumo[["Promotor", "Status", "KM Total", "Total (R$)"]].copy()
         df_exibicao["KM Total"] = df_exibicao["KM Total"].apply(lambda x: f"{float_para_str_br(x)} km")
         df_exibicao["Total (R$)"] = df_exibicao["Total (R$)"].apply(lambda x: f"R$ {float_para_str_br(x)}")
         st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
 
-        # Botão para download de CSV
-        csv_data = df_resumo.to_csv(index=False, encoding='utf-8-sig').encode('utf-8')
+        # Botão para baixar CSV desta semana específica
+        csv_data = df_resumo.drop(columns=["DadosCompletos"]).to_csv(index=False, encoding='utf-8-sig').encode('utf-8')
         st.download_button(
-            label="📥 BAIXAR DADOS EM FORMATO CSV (EXCEL)",
+            label=f"📥 BAIXAR DADOS DA {semana_escolhida_str.upper()} EM CSV (EXCEL)",
             data=csv_data,
-            file_name=f"relatorio_km_minassal_{datetime.now().strftime('%Y%m%d_%H%M')}.csv",
+            file_name=f"relatorio_km_minassal_semana_{num_semana_sel}_{datetime.now().strftime('%Y%m%d')}.csv",
             mime="text/csv"
         )
 
         st.divider()
-        st.markdown("### 🔍 INSPEÇÃO DETALHADA POR LANÇAMENTO")
+        st.markdown("### 🔍 INSPEÇÃO DETALHADA POR PROMOTOR NESTA SEMANA")
         
-        # Selecionar chave específica para ver dia a dia e despesas
-        chave_selecionada = st.selectbox("Selecione um lançamento para inspecionar:", options=df_resumo["Chave"].tolist())
+        # Selecionar o promotor específico daquela semana para ver detalhe diário e gastos
+        promotores_na_semana = df_resumo["Promotor"].tolist()
+        promotor_escolhido_detalhe = st.selectbox("Selecione o promotor para ver o diário e despesas:", options=promotores_na_semana)
         
-        if chave_selecionada:
-            detalhe_item = HISTORICO_GERAL.get(chave_selecionada, {})
-            st.markdown(f"**Promotor:** {detalhe_item.get('promotor')} | **Semana:** {detalhe_item.get('semana_ref')} ({detalhe_item.get('intervalo_datas')}) | **Status:** {detalhe_item.get('status')}")
+        if promotor_escolhido_detalhe:
+            item_filtrado = df_resumo[df_resumo["Promotor"] == promotor_escolhido_detalhe].iloc[0]
+            detalhe_item = item_filtrado["DadosCompletos"]
             
-            # Detalhes diários
+            st.markdown(f"**Promotor(a):** {promotor_escolhido_detalhe} | **Status:** {detalhe_item.get('status')}")
+            
+            # Detalhes diários (Quilometragem)
             dias_det = detalhe_item.get("detalhes", [])
             if dias_det:
                 st.markdown("**Quilometragem Diária:**")
                 df_dias = pd.DataFrame(dias_det)
-                # Reorganizar colunas se existirem
                 cols_mostrar = [c for c in ["dia", "data", "sit", "km_ini", "km_fim", "km"] if c in df_dias.columns]
                 df_dias_ex = df_dias[cols_mostrar].rename(columns={
                     "dia": "Dia", "data": "Data", "sit": "Situação", "km_ini": "KM Inicial", "km_fim": "KM Final", "km": "KM Rodado"
@@ -550,7 +564,7 @@ if is_admin_benedito:
                 df_gastos = pd.DataFrame(gastos_det)
                 st.dataframe(df_gastos, use_container_width=True, hide_index=True)
             else:
-                st.info("Nenhum gasto extra registrado neste lançamento.")
+                st.info("Nenhum gasto extra registrado por este promotor nesta semana.")
 
     st.stop()
 
@@ -625,7 +639,7 @@ if is_area_teste:
             st.success(f"✅ Testes executados com sucesso! {sucessos} relatório(s) gerado(s) e e-mail(s) disparado(s).")
             st.balloons()
         else:
-            st.warning("Houve falha ao salvar no GitHub ou disparar os e-mais.")
+            st.warning("Houve falha ao salvar no GitHub ou disparar os e-mails.")
 
     st.write("")
     if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
