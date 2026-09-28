@@ -118,10 +118,6 @@ DADOS_PROMOTORES = {
     "Madalla Teixeira Reis": {
         "endereco": "Rua Odilon Machado, 105 - Tocantins/MG",
         "email": "madallareis66@gmail.com"
-    },
-    "Rodrigo Luis Adao": {
-        "endereco": "Avenida Professora Edul Rangel Rabello, 405 - Ribeirão Preto/SP",
-        "email": ""
     }
 }
 
@@ -316,17 +312,17 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     is_teste = payload_dados.get("is_teste", False)
     sufixo_assunto = " [TESTE]" if is_teste else ""
 
-    nome_arq_pdf = f"Resumo_Financeiro_Semana_{semana_num}_{promotor_nome.replace(' ', '_')}.pdf"
+    nome_arq_pdf = f"Resumo_Financeiro_Semana_{num_semana}_{promotor_nome.replace(' ', '_')}.pdf"
     gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, nome_arq_pdf)
 
-    assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {semana_num} - {promotor_nome}"
+    assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {num_semana} - {promotor_nome}"
     
     corpo_html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333;">
         <h2 style="color: #134074;">Minassal - Fechamento de KM e Reembolso {sufixo_assunto}</h2>
         <p><b>Promotor(a):</b> {promotor_nome}</p>
-        <p><b>Semana de Referência:</b> Semana {semana_num} ({intervalo})</p>
+        <p><b>Semana de Referência:</b> Semana {num_semana} ({intervalo})</p>
         <hr/>
         <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM e despesas extras.</p>
         <p><b>Valor Total a Pagar: R$ {float_para_str_br(payload_dados['valor_total'])}</b></p>
@@ -463,11 +459,11 @@ is_admin_benedito = ("Benedito Bandola" in promotor_sel)
 is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 
 # ==============================================================================
-# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - CONSULTA, EDIÇÃO E EXCLUSÃO
+# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - COM JUSTIFICATIVA DE EXCLUSÃO
 # ==============================================================================
 if is_admin_benedito:
     st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA E AUDITORIA</h2>", unsafe_allow_html=True)
-    st.caption("Consulte os lançamentos por semana, reclassifique semanas ou exclua registros de promotores.")
+    st.caption("Consulte os lançamentos por semana, reclassifique semanas ou exclua registros com justificativa obrigatória.")
     
     if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
         st.session_state.usuario_ativo = None
@@ -476,9 +472,9 @@ if is_admin_benedito:
     st.divider()
 
     # ==========================================================================
-    # FERRAMENTA DE EXCLUSÃO DE LANÇAMENTO POR SEMANA E PROMOTOR
+    # FERRAMENTA DE EXCLUSÃO COM JUSTIFICATIVA OBRIGATÓRIA
     # ==========================================================================
-    with st.expander("🗑️ EXCLUIR LANÇAMENTO DE UM PROMOTOR", expanded=False):
+    with st.expander("🗑️ EXCLUIR LANÇAMENTO DE UM PROMOTOR (COM JUSTIFICATIVA)", expanded=False):
         if HISTORICO_GERAL:
             chaves_existentes_del = sorted(list(HISTORICO_GERAL.keys()))
             chave_para_deletar = st.selectbox("Selecione o registro (Promotor + Semana) para apagar:", options=chaves_existentes_del, key="sel_del_reg")
@@ -488,20 +484,26 @@ if is_admin_benedito:
                 p_del_nome = dados_del_item.get("promotor", "")
                 s_del_num = dados_del_item.get("semana_ref", "")
                 
-                st.warning(f"⚠️ Você está prestes a apagar permanentemente o lançamento do(a) promotor(a) **{p_del_nome}** referente à **Semana {s_del_num}**.")
+                st.warning(f"⚠️ Atenção: Você está selecionando o lançamento do(a) promotor(a) **{p_del_nome}** referente à **Semana {s_del_num}**.")
+                
+                justificativa_exclusao = st.text_input("✍️ INFORME A JUSTIFICATIVA OBRIGATÓRIA PARA A EXCLUSÃO:", placeholder="Ex: Lançamento duplicado, enviado incorretamente...")
                 
                 if st.button("🔥 CONFIRMAR E APAGAR ESTE REGISTRO"):
-                    del HISTORICO_GERAL[chave_para_deletar]
-                    ok_del = salvar_base_historico_github(
-                        HISTORICO_GERAL,
-                        sha_existente=SHA_GERAL,
-                        mensagem_commit=f"Removido lançamento {chave_para_deletar} por Benedito"
-                    )
-                    if ok_del:
-                        st.success("✅ Registro apagado com sucesso do sistema!")
-                        st.rerun()
+                    if not justificativa_exclusao.strip():
+                        st.error("❌ A justificativa é obrigatória para prosseguir com a exclusão!")
                     else:
-                        st.error("Erro ao salvar alteração no GitHub.")
+                        del HISTORICO_GERAL[chave_para_deletar]
+                        msg_commit = f"Excluído {chave_para_deletar} por Benedito. Justificativa: {justificativa_exclusao.strip()}"
+                        ok_del = salvar_base_historico_github(
+                            HISTORICO_GERAL,
+                            sha_existente=SHA_GERAL,
+                            mensagem_commit=msg_commit
+                        )
+                        if ok_del:
+                            st.success("✅ Registro apagado com sucesso e justificativa registrada no histórico!")
+                            st.rerun()
+                        else:
+                            st.error("Erro ao salvar alteração no GitHub.")
         else:
             st.info("Nenhum registro para excluir.")
 
@@ -1023,21 +1025,27 @@ if not esta_finalizado:
                 st.rerun()
 
     with col_btn2:
+        # Checkbox obrigatório para confirmação dos dados
+        termo_aceito = st.checkbox("Confirmo os dados acima e estou ciente de que sou integralmente responsável pelas informações prestadas neste envio.")
+        
         if st.button("FINALIZAR SEMANA 🚀", type="primary"):
-            payload = construir_payload("FINALIZADO")
-            HISTORICO_GERAL[chave_registro] = payload
-            sucesso = salvar_base_historico_github(
-                HISTORICO_GERAL, 
-                sha_existente=SHA_GERAL,
-                mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
-            )
-            if sucesso:
-                ok_email, msg_email = enviar_email_com_pdf(promotor_sel, num_semana, intervalo_str, payload)
-                if ok_email:
-                    st.success("Semana finalizada, bloqueada e e-mail com PDF executivo enviado com sucesso!")
-                else:
-                    st.warning(f"Semana finalizada no GitHub, mas houve um erro ao enviar o e-mail: {msg_email}")
-                st.balloons()
-                st.rerun()
+            if not termo_aceito:
+                st.error("❌ Você precisa marcar o termo de confirmação e responsabilidade antes de finalizar a semana!")
+            else:
+                payload = construir_payload("FINALIZADO")
+                HISTORICO_GERAL[chave_registro] = payload
+                sucesso = salvar_base_historico_github(
+                    HISTORICO_GERAL, 
+                    sha_existente=SHA_GERAL,
+                    mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
+                )
+                if sucesso:
+                    ok_email, msg_email = enviar_email_com_pdf(promotor_sel, num_semana, intervalo_str, payload)
+                    if ok_email:
+                        st.success("Semana finalizada, bloqueada e e-mail com PDF executivo enviado com sucesso!")
+                    else:
+                        st.warning(f"Semana finalizada no GitHub, mas houve um erro ao enviar o e-mail: {msg_email}")
+                    st.balloons()
+                    st.rerun()
 
 st.markdown("<br><hr><p style='text-align: center; color: #555555; font-size: 11px;'>Desenvolvido por Benedito Bandola</p>", unsafe_allow_html=True)
