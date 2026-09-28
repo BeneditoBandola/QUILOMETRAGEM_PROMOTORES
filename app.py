@@ -909,7 +909,7 @@ for i, dia_nome in enumerate(dias_semana):
         })
 
 # ==============================================================================
-# GASTOS EXTRAS
+# GASTOS EXTRAS (ATUALIZADO COM DATA DD/MM E BOTÃO LARGO "APAGAR")
 # ==============================================================================
 st.divider()
 st.markdown("### 💰 GASTOS EXTRAS")
@@ -928,30 +928,17 @@ if not esta_finalizado:
 
 gastos_extras = []
 for idx, g_item in enumerate(st.session_state.lista_gastos_extras):
-    col_dt, col_desc, col_val, col_del = st.columns([1.2, 2.6, 1.8, 1])
+    col_dt, col_desc, col_val, col_del = st.columns([1.2, 2.6, 1.8, 1.2])
     
     with col_dt:
-        try:
-            data_salva_obj = datetime.strptime(g_item.get("data", segunda.strftime("%d/%m") + f"/{segunda.year}"), "%d/%m/%Y").date()
-        except Exception:
-            data_salva_obj = segunda.date()
-
-        min_dt = segunda.date()
-        max_dt = domingo.date()
-        if data_salva_obj < min_dt or data_salva_obj > max_dt:
-            data_salva_obj = min_dt
-
-        g_data_obj = st.date_input(
+        g_data_str = st.text_input(
             "Data",
-            value=data_salva_obj,
-            min_value=min_dt,
-            max_value=max_dt,
+            value=g_item.get("data", segunda.strftime("%d/%m")),
+            placeholder="DD/MM",
             disabled=esta_finalizado,
             key=f"gdata_{idx}",
             label_visibility="collapsed"
         )
-        g_data_str = g_data_obj.strftime("%d/%m")
-
     with col_desc:
         g_desc = st.text_input(
             "Descrição", 
@@ -975,14 +962,13 @@ for idx, g_item in enumerate(st.session_state.lista_gastos_extras):
         v_float = str_br_para_float(g_val_txt)
 
     with col_del:
-        st.write("")
         if not esta_finalizado:
-            if st.button("🗑️ Apagar", key=f"del_gasto_{idx}"):
+            if st.button("🗑️ APAGAR", key=f"del_gasto_{idx}"):
                 st.session_state.lista_gastos_extras.pop(idx)
                 st.rerun()
 
-    if g_desc.strip() and v_float > 0:
-        gastos_extras.append({"data": g_data_str, "desc": g_desc.strip(), "valor": v_float})
+    if g_desc.strip() and v_float > 0 and g_data_str.strip():
+        gastos_extras.append({"data": g_data_str.strip(), "desc": g_desc.strip(), "valor": v_float})
 
 # ==============================================================================
 # RESUMO FINANCEIRO
@@ -1033,7 +1019,6 @@ if not esta_finalizado:
                 st.rerun()
 
     with col_btn2:
-        # Exibe o texto completo em destaque acima da caixinha para evitar cortes
         st.markdown("<p style='font-size: 13px; color: #EDEDED; line-height: 1.4; margin-bottom: 8px;'>Confirmo os dados acima e estou ciente de que sou integralmente responsável pelas informações prestadas neste envio.</p>", unsafe_allow_html=True)
         termo_aceito = st.checkbox("Li e concordo com o termo acima")
         
