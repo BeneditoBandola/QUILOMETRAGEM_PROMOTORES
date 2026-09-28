@@ -164,6 +164,17 @@ def calcular_intervalo_semana(num_semana, ano=None):
     domingo = segunda + timedelta(days=6)
     return segunda, domingo
 
+def obter_semana_padrao_inteligente():
+    """Retorna a semana atual, mantendo a semana anterior até segunda-feira às 12:00."""
+    agora = datetime.now()
+    semana_padrao = agora.isocalendar()[1]
+    # Se for segunda-feira (weekday == 0) e antes das 12:00, mantém a semana anterior
+    if agora.weekday() == 0 and agora.hour < 12:
+        semana_padrao -= 1
+        if semana_padrao < 1:
+            semana_padrao = 52
+    return semana_padrao
+
 # ==============================================================================
 # RODAPÉ DE PROTEÇÃO E AUTORIA
 # ==============================================================================
@@ -417,7 +428,7 @@ def salvar_base_historico_github(historico_dict, sha_existente=None, mensagem_co
 HISTORICO_GERAL, SHA_GERAL = carregar_base_historico_github()
 
 # ==============================================================================
-# TELA DE IDENTIFICAÇÃO (COM OPÇÃO DE ÁREA DE TESTES E PAINEL DO BENEDITO)
+# TELA DE IDENTIFICAÇÃO (COM AUTENTICAÇÃO PARA BENEDITO)
 # ==============================================================================
 if "usuario_ativo" not in st.session_state:
     st.session_state.usuario_ativo = None
@@ -429,10 +440,22 @@ if not st.session_state.usuario_ativo:
     opcoes_acesso = ["-- Selecione seu perfil ou área --", "👑 Benedito Bandola (Painel de Gestão)", "🧪 [ÁREA DE TESTES / SIMULAÇÃO]"] + PROMOTORES
     escolha_promotor = st.selectbox("QUEM É VOCÊ?", options=opcoes_acesso)
     
+    # Se escolher Benedito, pede a senha na mesma tela
+    senha_admin = ""
+    if "Benedito Bandola" in escolha_promotor:
+        senha_admin = st.text_input("DIGITE A SENHA DE ACESSO:", type="password")
+
     if st.button("ACESSAR SISTEMA ➔", type="primary"):
         if escolha_promotor != "-- Selecione seu perfil ou área --":
-            st.session_state.usuario_ativo = escolha_promotor
-            st.rerun()
+            if "Benedito Bandola" in escolha_promotor:
+                if senha_admin == "1234":
+                    st.session_state.usuario_ativo = escolha_promotor
+                    st.rerun()
+                else:
+                    st.error("❌ Senha incorreta! A senha do painel é 1234.")
+            else:
+                st.session_state.usuario_ativo = escolha_promotor
+                st.rerun()
         else:
             st.warning("Por favor, selecione uma opção antes de prosseguir.")
     st.stop()
@@ -442,7 +465,7 @@ is_admin_benedito = ("Benedito Bandola" in promotor_sel)
 is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 
 # ==============================================================================
-# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - FOCO EM SELEÇÃO DE SEMANA
+# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - CONSULTA POR SEMANA
 # ==============================================================================
 if is_admin_benedito:
     st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA POR SEMANA</h2>", unsafe_allow_html=True)
@@ -458,7 +481,6 @@ if is_admin_benedito:
         st.info("Nenhum lançamento registrado no sistema até o momento.")
         st.stop()
 
-    # Extrair semanas cadastradas ordenadas
     semanas_cadastradas = sorted(
         list(set([v.get("semana_ref") for v in HISTORICO_GERAL.values() if "semana_ref" in v])), 
         key=lambda x: int(x) if x.isdigit() else 0
@@ -468,11 +490,9 @@ if is_admin_benedito:
         st.warning("Nenhuma semana encontrada nos registros.")
         st.stop()
 
-    # SELEÇÃO PRINCIPAL DA SEMANA
-    semana_atual_default = int(datetime.now().isocalendar()[1])
+    semana_atual_default = obter_semana_padrao_inteligente()
     opcoes_semanas_fmt = [f"Semana {s}" for s in semanas_cadastradas]
     
-    # Tenta selecionar a semana atual por padrão se existir na lista, senão a primeira
     default_index = 0
     s_atual_str = f"Semana {semana_atual_default}"
     if s_atual_str in opcoes_semanas_fmt:
@@ -485,7 +505,6 @@ if is_admin_benedito:
     intervalo_sel_str = f"{seg_sel.strftime('%d/%m')} a {dom_sel.strftime('%d/%m')}"
     st.markdown(f"<div style='padding:8px 14px; background:#141414; border-left:4px solid #FDD818; margin-bottom:15px;'>📌 <b>PERÍODO DA SEMANA {num_semana_sel}:</b> {intervalo_sel_str}</div>", unsafe_allow_html=True)
 
-    # Filtrar registros apenas da semana escolhida
     tabela_registros = []
     for chave, dados in HISTORICO_GERAL.items():
         if dados.get("semana_ref") == str(num_semana_sel):
@@ -505,10 +524,8 @@ if is_admin_benedito:
     else:
         df_resumo = pd.DataFrame(tabela_registros)
         
-        # Métricas Globais da Semana Selecionada
         total_km_semana = df_resumo["KM Total"].sum()
         total_pago_semana = df_resumo["Total (R$)"].sum()
-        total_promotores_enviados = len(df_resumo[df_resumo["Status"] == "FINALIZADO"])
         
         m1, m2, m3 = st.columns(3)
         m1.metric("PROMOTORES LANÇARAM", f"{len(df_resumo)} / {len(PROMOTORES)}")
@@ -518,13 +535,11 @@ if is_admin_benedito:
         st.write("")
         st.markdown(f"### 📋 RESUMO DOS PROMOTORES — {semana_escolhida_str.upper()}")
         
-        # Tabela limpa para visualização rápida da semana
         df_exibicao = df_resumo[["Promotor", "Status", "KM Total", "Total (R$)"]].copy()
         df_exibicao["KM Total"] = df_exibicao["KM Total"].apply(lambda x: f"{float_para_str_br(x)} km")
         df_exibicao["Total (R$)"] = df_exibicao["Total (R$)"].apply(lambda x: f"R$ {float_para_str_br(x)}")
         st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
 
-        # Botão para baixar CSV desta semana específica
         csv_data = df_resumo.drop(columns=["DadosCompletos"]).to_csv(index=False, encoding='utf-8-sig').encode('utf-8')
         st.download_button(
             label=f"📥 BAIXAR DADOS DA {semana_escolhida_str.upper()} EM CSV (EXCEL)",
@@ -536,7 +551,6 @@ if is_admin_benedito:
         st.divider()
         st.markdown("### 🔍 INSPEÇÃO DETALHADA POR PROMOTOR NESTA SEMANA")
         
-        # Selecionar o promotor específico daquela semana para ver detalhe diário e gastos
         promotores_na_semana = df_resumo["Promotor"].tolist()
         promotor_escolhido_detalhe = st.selectbox("Selecione o promotor para ver o diário e despesas:", options=promotores_na_semana)
         
@@ -546,7 +560,6 @@ if is_admin_benedito:
             
             st.markdown(f"**Promotor(a):** {promotor_escolhido_detalhe} | **Status:** {detalhe_item.get('status')}")
             
-            # Detalhes diários (Quilometragem)
             dias_det = detalhe_item.get("detalhes", [])
             if dias_det:
                 st.markdown("**Quilometragem Diária:**")
@@ -557,7 +570,6 @@ if is_admin_benedito:
                 })
                 st.dataframe(df_dias_ex, use_container_width=True, hide_index=True)
             
-            # Gastos extras
             gastos_det = detalhe_item.get("gastos_extras", [])
             if gastos_det:
                 st.markdown("**Gastos Extras Registrados:**")
@@ -576,7 +588,7 @@ if is_area_teste:
     st.info("Escolha abaixo o promotor (ou todos em lote), informe a semana e clique para gerar e disparar os testes de e-mail com PDF.")
     
     escolha_teste_promotor = st.selectbox("ESCOLHA O PROMOTOR PARA O TESTE:", options=["🔄 Todos os Promotores (Lote)"] + PROMOTORES)
-    num_semana_teste = st.number_input("Nº DA SEMANA PARA O TESTE:", min_value=1, max_value=53, value=int(datetime.now().isocalendar()[1]))
+    num_semana_teste = st.number_input("Nº DA SEMANA PARA O TESTE:", min_value=1, max_value=53, value=obter_semana_padrao_inteligente())
     
     if st.button("⚡ GERAR E DISPARAR TESTE(S) AGORA"):
         promotores_alvo = PROMOTORES if escolha_teste_promotor == "🔄 Todos os Promotores (Lote)" else [escolha_teste_promotor]
@@ -665,8 +677,8 @@ with col_sair:
 st.markdown(f"**PROMOTOR(A):** {promotor_sel}")
 st.caption(f"🏠 {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
 
-semana_atual_default = int(datetime.now().isocalendar()[1])
-num_semana = st.number_input("Nº DA SEMANA:", min_value=1, max_value=53, value=semana_atual_default)
+semana_padrao_default = obter_semana_padrao_inteligente()
+num_semana = st.number_input("Nº DA SEMANA:", min_value=1, max_value=53, value=semana_padrao_default)
 
 segunda, domingo = calcular_intervalo_semana(num_semana)
 intervalo_str = f"{segunda.strftime('%d/%m')} a {domingo.strftime('%d/%m')}"
