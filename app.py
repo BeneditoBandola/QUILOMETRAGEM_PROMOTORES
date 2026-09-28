@@ -463,11 +463,11 @@ is_admin_benedito = ("Benedito Bandola" in promotor_sel)
 is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 
 # ==============================================================================
-# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - CONSULTA E EDIÇÃO DE SEMANA
+# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - CONSULTA, EDIÇÃO E EXCLUSÃO
 # ==============================================================================
 if is_admin_benedito:
-    st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA E EDIÇÃO</h2>", unsafe_allow_html=True)
-    st.caption("Consulte os lançamentos por semana ou reclassifique o número da semana de um registro incorreto.")
+    st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA E AUDITORIA</h2>", unsafe_allow_html=True)
+    st.caption("Consulte os lançamentos por semana, reclassifique semanas ou exclua registros de promotores.")
     
     if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
         st.session_state.usuario_ativo = None
@@ -476,12 +476,42 @@ if is_admin_benedito:
     st.divider()
 
     # ==========================================================================
+    # FERRAMENTA DE EXCLUSÃO DE LANÇAMENTO POR SEMANA E PROMOTOR
+    # ==========================================================================
+    with st.expander("🗑️ EXCLUIR LANÇAMENTO DE UM PROMOTOR", expanded=False):
+        if HISTORICO_GERAL:
+            chaves_existentes_del = sorted(list(HISTORICO_GERAL.keys()))
+            chave_para_deletar = st.selectbox("Selecione o registro (Promotor + Semana) para apagar:", options=chaves_existentes_del, key="sel_del_reg")
+            
+            if chave_para_deletar:
+                dados_del_item = HISTORICO_GERAL[chave_para_deletar]
+                p_del_nome = dados_del_item.get("promotor", "")
+                s_del_num = dados_del_item.get("semana_ref", "")
+                
+                st.warning(f"⚠️ Você está prestes a apagar permanentemente o lançamento do(a) promotor(a) **{p_del_nome}** referente à **Semana {s_del_num}**.")
+                
+                if st.button("🔥 CONFIRMAR E APAGAR ESTE REGISTRO"):
+                    del HISTORICO_GERAL[chave_para_deletar]
+                    ok_del = salvar_base_historico_github(
+                        HISTORICO_GERAL,
+                        sha_existente=SHA_GERAL,
+                        mensagem_commit=f"Removido lançamento {chave_para_deletar} por Benedito"
+                    )
+                    if ok_del:
+                        st.success("✅ Registro apagado com sucesso do sistema!")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar alteração no GitHub.")
+        else:
+            st.info("Nenhum registro para excluir.")
+
+    # ==========================================================================
     # FERRAMENTA DE RECLASSIFICAÇÃO DE SEMANA
     # ==========================================================================
     with st.expander("🔄 RECLASSIFICAR SEMANA DE UM LANÇAMENTO (EX: CORRIGIR 40 PARA 39)", expanded=False):
         if HISTORICO_GERAL:
             chaves_existentes = sorted(list(HISTORICO_GERAL.keys()))
-            chave_para_editar = st.selectbox("Selecione o registro para alterar a semana:", options=chaves_existentes)
+            chave_para_editar = st.selectbox("Selecione o registro para alterar a semana:", options=chaves_existentes, key="sel_edit_reg")
             
             if chave_para_editar:
                 dados_atual_editar = HISTORICO_GERAL[chave_para_editar]
@@ -496,11 +526,9 @@ if is_admin_benedito:
                     seg_n, dom_n = calcular_intervalo_semana(int(nova_semana_alvo))
                     novo_intervalo_str = f"{seg_n.strftime('%d/%m')} a {dom_n.strftime('%d/%m')}"
                     
-                    # Atualiza os dados internos
                     dados_atual_editar["semana_ref"] = str(nova_semana_alvo)
                     dados_atual_editar["intervalo_datas"] = novo_intervalo_str
                     
-                    # Cria a nova chave e remove a antiga
                     nova_chave = f"{promotor_obj}_S{nova_semana_alvo}"
                     HISTORICO_GERAL[nova_chave] = dados_atual_editar
                     if chave_para_editar != nova_chave and chave_para_editar in HISTORICO_GERAL:
