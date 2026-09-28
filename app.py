@@ -168,7 +168,6 @@ def obter_semana_padrao_inteligente():
     """Retorna a semana atual, mantendo a semana anterior até segunda-feira às 12:00."""
     agora = datetime.now()
     semana_padrao = agora.isocalendar()[1]
-    # Se for segunda-feira (weekday == 0) e antes das 12:00, mantém a semana anterior
     if agora.weekday() == 0 and agora.hour < 12:
         semana_padrao -= 1
         if semana_padrao < 1:
@@ -440,7 +439,6 @@ if not st.session_state.usuario_ativo:
     opcoes_acesso = ["-- Selecione seu perfil ou área --", "👑 Benedito Bandola (Painel de Gestão)", "🧪 [ÁREA DE TESTES / SIMULAÇÃO]"] + PROMOTORES
     escolha_promotor = st.selectbox("QUEM É VOCÊ?", options=opcoes_acesso)
     
-    # Se escolher Benedito, pede a senha na mesma tela
     senha_admin = ""
     if "Benedito Bandola" in escolha_promotor:
         senha_admin = st.text_input("DIGITE A SENHA DE ACESSO:", type="password")
@@ -465,15 +463,61 @@ is_admin_benedito = ("Benedito Bandola" in promotor_sel)
 is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 
 # ==============================================================================
-# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - CONSULTA POR SEMANA
+# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA) - CONSULTA E EDIÇÃO DE SEMANA
 # ==============================================================================
 if is_admin_benedito:
-    st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA POR SEMANA</h2>", unsafe_allow_html=True)
-    st.caption("Selecione a semana desejada para visualizar os quilômetros, despesas e status de todos os promotores.")
+    st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA E EDIÇÃO</h2>", unsafe_allow_html=True)
+    st.caption("Consulte os lançamentos por semana ou reclassifique o número da semana de um registro incorreto.")
     
     if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
         st.session_state.usuario_ativo = None
         st.rerun()
+
+    st.divider()
+
+    # ==========================================================================
+    # FERRAMENTA DE RECLASSIFICAÇÃO DE SEMANA
+    # ==========================================================================
+    with st.expander("🔄 RECLASSIFICAR SEMANA DE UM LANÇAMENTO (EX: CORRIGIR 40 PARA 39)", expanded=False):
+        if HISTORICO_GERAL:
+            chaves_existentes = sorted(list(HISTORICO_GERAL.keys()))
+            chave_para_editar = st.selectbox("Selecione o registro para alterar a semana:", options=chaves_existentes)
+            
+            if chave_para_editar:
+                dados_atual_editar = HISTORICO_GERAL[chave_para_editar]
+                promotor_obj = dados_atual_editar.get("promotor", "")
+                semana_atual_obj = int(dados_atual_editar.get("semana_ref", "1"))
+                
+                st.markdown(f"**Promotor:** {promotor_obj} | **Semana Atual no Registro:** {semana_atual_obj}")
+                
+                nova_semana_alvo = st.number_input("NOVO NÚMERO DA SEMANA CORRETO:", min_value=1, max_value=53, value=semana_atual_obj)
+                
+                if st.button("⚡ SALVAR NOVA SEMANA PARA ESTE REGISTRO"):
+                    seg_n, dom_n = calcular_intervalo_semana(int(nova_semana_alvo))
+                    novo_intervalo_str = f"{seg_n.strftime('%d/%m')} a {dom_n.strftime('%d/%m')}"
+                    
+                    # Atualiza os dados internos
+                    dados_atual_editar["semana_ref"] = str(nova_semana_alvo)
+                    dados_atual_editar["intervalo_datas"] = novo_intervalo_str
+                    
+                    # Cria a nova chave e remove a antiga
+                    nova_chave = f"{promotor_obj}_S{nova_semana_alvo}"
+                    HISTORICO_GERAL[nova_chave] = dados_atual_editar
+                    if chave_para_editar != nova_chave and chave_para_editar in HISTORICO_GERAL:
+                        del HISTORICO_GERAL[chave_para_editar]
+                    
+                    ok_reclassificar = salvar_base_historico_github(
+                        HISTORICO_GERAL,
+                        sha_existente=SHA_GERAL,
+                        mensagem_commit=f"Reclassificado {promotor_obj} para Semana {nova_semana_alvo}"
+                    )
+                    if ok_reclassificar:
+                        st.success(f"✅ Lançamento movido com sucesso para a Semana {nova_semana_alvo}!")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar alteração no GitHub.")
+        else:
+            st.info("Nenhum registro para reclassificar.")
 
     st.divider()
 
