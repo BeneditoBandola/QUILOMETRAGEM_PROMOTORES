@@ -440,11 +440,11 @@
         ]
     },
     "Carolina Rodrigues Bruno_S40": {
-        "id": 1791152352,
+        "id": 1791152364,
         "semana_ref": "40",
         "intervalo_datas": "28/09 a 04/10",
         "promotor": "Carolina Rodrigues Bruno",
-        "status": "RASCUNHO",
+        "status": "FINALIZADO",
         "is_teste": false,
         "km_total": 480.0,
         "valor_km": 561.5999999999999,
