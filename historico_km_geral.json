@@ -438,5 +438,76 @@
                 "km_fim": 82672.0
             }
         ]
+    },
+    "Carolina Rodrigues Bruno_S40": {
+        "id": 1791152352,
+        "semana_ref": "40",
+        "intervalo_datas": "28/09 a 04/10",
+        "promotor": "Carolina Rodrigues Bruno",
+        "status": "RASCUNHO",
+        "is_teste": false,
+        "km_total": 480.0,
+        "valor_km": 561.5999999999999,
+        "valor_extras": 126.17,
+        "valor_total": 687.7699999999999,
+        "gastos_extras": [
+            {
+                "data": "29/09",
+                "desc": "Papelaria e rações",
+                "valor": 59.57
+            },
+            {
+                "data": "30/09",
+                "desc": "Papelaria",
+                "valor": 26.9
+            },
+            {
+                "data": "01/10",
+                "desc": "Sedex correio",
+                "valor": 39.7
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "28/09",
+                "km": 144.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 144.0
+            },
+            {
+                "dia": "Terça",
+                "data": "29/09",
+                "km": 55.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 55.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "30/09",
+                "km": 62.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 62.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "01/10",
+                "km": 162.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 162.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "02/10",
+                "km": 57.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 57.0
+            }
+        ]
     }
 }
