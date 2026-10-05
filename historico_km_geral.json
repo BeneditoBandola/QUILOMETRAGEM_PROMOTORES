@@ -619,5 +619,66 @@
                 "km_fim": 24.0
             }
         ]
+    },
+    "Madalla Teixeira Reis_S40": {
+        "id": 1791197369,
+        "semana_ref": "40",
+        "intervalo_datas": "28/09 a 04/10",
+        "promotor": "Madalla Teixeira Reis",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 332.0,
+        "valor_km": 388.44,
+        "valor_extras": 15.55,
+        "valor_total": 403.99,
+        "gastos_extras": [
+            {
+                "data": "23/09",
+                "desc": "Documento nos correios (porém é de semana passada eu esqueci de enviar)",
+                "valor": 15.55
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "28/09",
+                "km": 47.0,
+                "sit": "Normal",
+                "km_ini": 82790.0,
+                "km_fim": 82837.0
+            },
+            {
+                "dia": "Terça",
+                "data": "29/09",
+                "km": 88.0,
+                "sit": "Normal",
+                "km_ini": 82837.0,
+                "km_fim": 82925.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "30/09",
+                "km": 56.0,
+                "sit": "Normal",
+                "km_ini": 82925.0,
+                "km_fim": 82981.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "01/10",
+                "km": 56.0,
+                "sit": "Normal",
+                "km_ini": 82981.0,
+                "km_fim": 83037.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "02/10",
+                "km": 85.0,
+                "sit": "Normal",
+                "km_ini": 83037.0,
+                "km_fim": 83122.0
+            }
+        ]
     }
 }
