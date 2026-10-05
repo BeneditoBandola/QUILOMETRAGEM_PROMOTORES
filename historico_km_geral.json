@@ -509,5 +509,60 @@
                 "km_fim": 57.0
             }
         ]
+    },
+    "Fernanda Dias Ferreira_S40": {
+        "id": 1791166600,
+        "semana_ref": "40",
+        "intervalo_datas": "28/09 a 04/10",
+        "promotor": "Fernanda Dias Ferreira",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 222.0,
+        "valor_km": 259.74,
+        "valor_extras": 0,
+        "valor_total": 259.74,
+        "gastos_extras": [],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "28/09",
+                "km": 31.0,
+                "sit": "Normal",
+                "km_ini": 83015.0,
+                "km_fim": 83046.0
+            },
+            {
+                "dia": "Terça",
+                "data": "29/09",
+                "km": 32.0,
+                "sit": "Normal",
+                "km_ini": 83046.0,
+                "km_fim": 83078.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "30/09",
+                "km": 56.0,
+                "sit": "Normal",
+                "km_ini": 83078.0,
+                "km_fim": 83134.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "01/10",
+                "km": 69.0,
+                "sit": "Normal",
+                "km_ini": 83134.0,
+                "km_fim": 83203.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "02/10",
+                "km": 34.0,
+                "sit": "Normal",
+                "km_ini": 83203.0,
+                "km_fim": 83237.0
+            }
+        ]
     }
 }
