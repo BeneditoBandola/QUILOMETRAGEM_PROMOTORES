@@ -680,5 +680,76 @@
                 "km_fim": 83122.0
             }
         ]
+    },
+    "Pamela Camila de Almeida Alexandrino_S40": {
+        "id": 1791198412,
+        "semana_ref": "40",
+        "intervalo_datas": "28/09 a 04/10",
+        "promotor": "Pamela Camila de Almeida Alexandrino",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 467.5,
+        "valor_km": 546.975,
+        "valor_extras": 146.28,
+        "valor_total": 693.255,
+        "gastos_extras": [
+            {
+                "data": "30/09",
+                "desc": "Pedágio 3 ( pedágios de 10,10 cada)",
+                "valor": 30.3
+            },
+            {
+                "data": "02/10",
+                "desc": "Pedagio 3 (pedágios de 10,10 cada)",
+                "valor": 30.3
+            },
+            {
+                "data": "02/10",
+                "desc": "Evento  ( bolo 44,00 refrigerante 30,00 guardanapo, copo 11,68)",
+                "valor": 85.68
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "28/09",
+                "km": 39.7,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 39.7
+            },
+            {
+                "dia": "Terça",
+                "data": "29/09",
+                "km": 33.9,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 33.9
+            },
+            {
+                "dia": "Quarta",
+                "data": "30/09",
+                "km": 186.6,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 186.6
+            },
+            {
+                "dia": "Quinta",
+                "data": "01/10",
+                "km": 17.8,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 17.8
+            },
+            {
+                "dia": "Sexta",
+                "data": "02/10",
+                "km": 189.5,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 189.5
+            }
+        ]
     }
 }
