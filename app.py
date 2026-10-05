@@ -182,7 +182,7 @@ def adicionar_rodape(canvas, doc):
     canvas.restoreState()
 
 # ==============================================================================
-# GERAÇÃO DO PDF EXECUTIVO (MODELO MINASSAL)
+# GERAÇÃO DO PDF EXECUTIVO (COM LINHAS DE TOTAIS)
 # ==============================================================================
 def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminho_pdf_saida):
     doc = SimpleDocTemplate(
@@ -202,6 +202,7 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     estilo_th = ParagraphStyle('TH', fontName='Helvetica-Bold', fontSize=9, textColor=colors.white, alignment=1)
     estilo_td = ParagraphStyle('TD', fontName='Helvetica', fontSize=8.5, textColor=colors.HexColor('#222222'), alignment=1)
     estilo_td_l = ParagraphStyle('TDL', parent=estilo_td, alignment=0)
+    estilo_th_tot = ParagraphStyle('THTOT', fontName='Helvetica-Bold', fontSize=8.5, textColor=colors.HexColor('#134074'), alignment=1)
 
     elementos = []
 
@@ -241,15 +242,28 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
         Paragraph("REEMBOLSO", estilo_th),
     ]]
 
+    soma_km_total = 0.0
+    soma_reemb_total = 0.0
+
     for d in payload_dados.get("detalhes", []):
         km_d = d.get("km", 0.0)
         reemb_d = km_d * VALOR_KM_TAXA
+        soma_km_total += km_d
+        soma_reemb_total += reemb_d
         tabela_dados.append([
             Paragraph(d.get("data", ""), estilo_td),
             Paragraph(d.get("sit", "Normal"), estilo_td),
             Paragraph(f"{float_para_str_br(km_d)}", estilo_td),
             Paragraph(f"R$ {float_para_str_br(reemb_d)}", estilo_td),
         ])
+
+    # Linha de Total do KM
+    tabela_dados.append([
+        Paragraph("<b>TOTAL GERAL</b>", estilo_th_tot),
+        Paragraph("-", estilo_th_tot),
+        Paragraph(f"<b>{float_para_str_br(soma_km_total)} km</b>", estilo_th_tot),
+        Paragraph(f"<b>R$ {float_para_str_br(soma_reemb_total)}</b>", estilo_th_tot),
+    ])
 
     t = Table(tabela_dados, colWidths=[100, 150, 110, 143])
     t.setStyle(TableStyle([
@@ -259,7 +273,8 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
         ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
         ('TOPPADDING', (0, 0), (-1, -1), 5),
         ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#FAFAFA')),
+        ('BACKGROUND', (0, 1), (-1, -2), colors.HexColor('#FAFAFA')),
+        ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#EAEAEA')),
     ]))
     elementos.append(t)
     elementos.append(Spacer(1, 15))
@@ -270,12 +285,23 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     gastos = payload_dados.get("gastos_extras", [])
     if gastos:
         tabela_gastos = [[Paragraph("DATA", estilo_th), Paragraph("DESCRIÇÃO", estilo_th), Paragraph("VALOR", estilo_th)]]
+        soma_gastos_total = 0.0
         for g in gastos:
+            val_g = g.get('valor', 0.0)
+            soma_gastos_total += val_g
             tabela_gastos.append([
                 Paragraph(g.get("data", ""), estilo_td),
                 Paragraph(g.get("desc", ""), estilo_td_l),
-                Paragraph(f"R$ {float_para_str_br(g.get('valor', 0.0))}", estilo_td),
+                Paragraph(f"R$ {float_para_str_br(val_g)}", estilo_td),
             ])
+        
+        # Linha de Total das Despesas Extras
+        tabela_gastos.append([
+            Paragraph("<b>TOTAL DESPESAS</b>", estilo_th_tot),
+            Paragraph("-", estilo_th_tot),
+            Paragraph(f"<b>R$ {float_para_str_br(soma_gastos_total)}</b>", estilo_th_tot),
+        ])
+
         tg = Table(tabela_gastos, colWidths=[100, 250, 153])
         tg.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#134074')),
@@ -283,6 +309,8 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
             ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('TOPPADDING', (0, 0), (-1, -1), 4),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CCCCCC')),
+            ('BACKGROUND', (0, 1), (-1, -2), colors.HexColor('#FAFAFA')),
+            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#EAEAEA')),
         ]))
         elementos.append(tg)
     else:
@@ -297,7 +325,7 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     doc.build(elementos, onFirstPage=adicionar_rodape, onLaterPages=adicionar_rodape)
 
 # ==============================================================================
-# FUNÇÃO DE ENVIO DE E-MAIL COM ANEXO PDF (INCLUINDO ADRIANA)
+# FUNÇÃO DE ENVIO DE E-MAIL COM ANEXO PDF
 # ==============================================================================
 def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     destinatario_promotor = DADOS_PROMOTORES.get(promotor_nome, {}).get("email", "")
@@ -312,17 +340,17 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     is_teste = payload_dados.get("is_teste", False)
     sufixo_assunto = " [TESTE]" if is_teste else ""
 
-    nome_arq_pdf = f"Resumo_Financeiro_Semana_{num_semana}_{promotor_nome.replace(' ', '_')}.pdf"
+    nome_arq_pdf = f"Resumo_Financeiro_Semana_{semana_num}_{promotor_nome.replace(' ', '_')}.pdf"
     gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, nome_arq_pdf)
 
-    assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {num_semana} - {promotor_nome}"
+    assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {semana_num} - {promotor_nome}"
     
     corpo_html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333;">
         <h2 style="color: #134074;">Minassal - Fechamento de KM e Reembolso {sufixo_assunto}</h2>
         <p><b>Promotor(a):</b> {promotor_nome}</p>
-        <p><b>Semana de Referência:</b> Semana {num_semana} ({intervalo})</p>
+        <p><b>Semana de Referência:</b> Semana {semana_num} ({intervalo})</p>
         <hr/>
         <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM e despesas extras.</p>
         <p><b>Valor Total a Pagar: R$ {float_para_str_br(payload_dados['valor_total'])}</b></p>
@@ -463,7 +491,7 @@ is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
 # ==============================================================================
 if is_admin_benedito:
     st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA E AUDITORIA</h2>", unsafe_allow_html=True)
-    st.caption("Consulte os lançamentos por semana, reclassifique semanas ou exclua registros com justificativa obrigatória.")
+    st.caption("Consulte os lançamentos por semana, reclassifique semanas, exclua registros ou reenvie e-mails.")
     
     if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
         st.session_state.usuario_ativo = None
@@ -645,6 +673,16 @@ if is_admin_benedito:
                 st.dataframe(df_gastos, use_container_width=True, hide_index=True)
             else:
                 st.info("Nenhum gasto extra registrado por este promotor nesta semana.")
+
+            st.write("")
+            # Opção exclusiva para o Benedito reenviar o e-mail
+            if st.button(f"📧 REENVIAR E-MAIL COM PDF PARA {promotor_escolhido_detalhe.upper()}", type="primary"):
+                with st.spinner("Gerando PDF e disparando e-mail..."):
+                    ok_re, msg_re = enviar_email_com_pdf(promotor_escolhido_detalhe, int(num_semana_sel), intervalo_sel_str, detalhe_item)
+                    if ok_re:
+                        st.success(f"✅ E-mail reenviado com sucesso para {promotor_escolhido_detalhe}!")
+                    else:
+                        st.error(f"❌ Erro ao enviar e-mail: {msg_re}")
 
     st.stop()
 
