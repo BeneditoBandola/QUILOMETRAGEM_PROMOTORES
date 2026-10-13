@@ -182,7 +182,7 @@ def adicionar_rodape(canvas, doc):
     canvas.restoreState()
 
 # ==============================================================================
-# GERAÇÃO DO PDF EXECUTIVO (COM DECLARAÇÃO DE RESPONSABILIDADE)
+# GERAÇÃO DO PDF EXECUTIVO (COM DECLARAÇÃO FORMAL DE RESPONSABILIDADE)
 # ==============================================================================
 def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminho_pdf_saida):
     doc = SimpleDocTemplate(
@@ -328,8 +328,13 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     elementos.append(Paragraph(f"VALOR TOTAL A PAGAR: R$ {float_para_str_br(total_geral)}", estilo_total))
 
     elementos.append(Spacer(1, 15))
-    estilo_resp = ParagraphStyle('RESP', fontName='Helvetica-Oblique', fontSize=8, textColor=colors.HexColor('#555555'), alignment=0)
-    elementos.append(Paragraph(f"<i>Relatório enviado pelo usuário <b>{promotor_nome}</b>, que é integralmente responsável pelas informações prestadas.</i>", estilo_resp))
+    estilo_resp = ParagraphStyle('RESP', fontName='Helvetica', fontSize=8, textColor=colors.HexColor('#444444'), alignment=0)
+    texto_declaracao = (
+        f"<b>DECLARAÇÃO DE RESPONSABILIDADE:</b> Documento submetido e validado eletronicamente "
+        f"pelo(a) colaborador(a) <b>{promotor_nome}</b>, o(a) qual assume total e integral responsabilidade "
+        f"pela veracidade, exatidão e conformidade das informações operacionais e financeiras aqui prestadas."
+    )
+    elementos.append(Paragraph(texto_declaracao, estilo_resp))
 
     doc.build(elementos, onFirstPage=adicionar_rodape, onLaterPages=adicionar_rodape)
 
@@ -407,6 +412,45 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
         return True, "E-mail com PDF enviado com sucesso!"
     except Exception as e:
         return False, str(e)
+
+# ==============================================================================
+# FUNÇÃO DE NOTIFICAÇÃO DE AUDITORIA (EXCLUSÃO / RECLASSIFICAÇÃO PARA ADRIANA)
+# ==============================================================================
+def enviar_email_aviso_auditoria(assunto_acao, mensagem_detalhe):
+    smtp_password = st.secrets.get("SMTP_PASSWORD", "")
+    if not smtp_password:
+        return
+
+    destinatarios = [EMAIL_PRINCIPAL, EMAIL_ADRIANA]
+    assunto = f"[Minassal KM - AUDITORIA] {assunto_acao}"
+    
+    corpo_html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333;">
+        <h2 style="color: #134074;">Aviso de Alteração / Auditoria no Sistema de KM</h2>
+        <p><b>Ação Realizada por:</b> Benedito Bandola (Administrador)</p>
+        <hr/>
+        <p>{mensagem_detalhe}</p>
+        <p style="font-size: 11px; color: #777; margin-top: 20px;">E-mail automático de segurança do sistema de Controle de KM.</p>
+        <p style="font-size: 10px; color: #888; border-top: 1px solid #eee; margin-top: 15px; padding-top: 5px;">Desenvolvido por Benedito Bandola</p>
+      </body>
+    </html>
+    """
+
+    msg = MIMEMultipart()
+    msg["Subject"] = assunto
+    msg["From"] = EMAIL_REMETENTE
+    msg["To"] = ", ".join(destinatarios)
+    msg.attach(MIMEText(corpo_html, "html"))
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL_REMETENTE, smtp_password)
+        server.sendmail(EMAIL_REMETENTE, destinatarios, msg.as_string())
+        server.quit()
+    except Exception:
+        pass
 
 # ==============================================================================
 # INTEGRAÇÃO COM GITHUB (JSON CENTRALIZADO COM PROTEÇÃO DE SHA)
@@ -546,7 +590,11 @@ if is_admin_benedito:
                             mensagem_commit=msg_commit
                         )
                         if ok_del:
-                            st.success("✅ Registro apagado com sucesso e justificativa registrada no histórico!")
+                            # DISPARA E-MAIL DE AVISO PARA A ADRIANA SOBRE A EXCLUSÃO
+                            detalhe_aviso_del = f"O registro do(a) promotor(a) <b>{p_del_nome}</b> referente à <b>Semana {s_del_num}</b> foi <b>APAGADO</b> pelo administrador Benedito Bandola.<br><br><b>Justificativa registrada:</b> {justificativa_exclusao.strip()}"
+                            enviar_email_aviso_auditoria(f"Exclusão de Lançamento - {p_del_nome} (Semana {s_del_num})", detalhe_aviso_del)
+
+                            st.success("✅ Registro apagado com sucesso, justificativa registrada e Adriana notificada por e-mail!")
                             st.rerun()
                         else:
                             st.error("Erro ao salvar alteração no GitHub.")
@@ -612,7 +660,11 @@ if is_admin_benedito:
                         mensagem_commit=f"Reclassificado {promotor_obj} para Semana {nova_semana_alvo} com calendário exato"
                     )
                     if ok_reclassificar:
-                        st.success(f"✅ Lançamento movido para a Semana {nova_semana_alvo} e o calendário foi atualizado com sucesso!")
+                        # DISPARA E-MAIL DE AVISO PARA A ADRIANA SOBRE A RECLASSIFICAÇÃO
+                        detalhe_aviso_rec = f"O lançamento do(a) promotor(a) <b>{promotor_obj}</b> foi reclassificado da <b>Semana {semana_atual_obj}</b> para a <b>Semana {nova_semana_alvo} ({novo_intervalo_str})</b> pelo administrador Benedito Bandola."
+                        enviar_email_aviso_auditoria(f"Reclassificação de Semana - {promotor_obj} (Movido para Semana {nova_semana_alvo})", detalhe_aviso_rec)
+
+                        st.success(f"✅ Lançamento movido para a Semana {nova_semana_alvo}, calendário atualizado e Adriana notificada por e-mail!")
                         st.rerun()
                     else:
                         st.error("Erro ao salvar alteração no GitHub.")
