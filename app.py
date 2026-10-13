@@ -182,7 +182,7 @@ def adicionar_rodape(canvas, doc):
     canvas.restoreState()
 
 # ==============================================================================
-# GERAÇÃO DO PDF EXECUTIVO (COM LINHAS DE TOTAIS E OBSERVAÇÕES)
+# GERAÇÃO DO PDF EXECUTIVO (COM DECLARAÇÃO DE RESPONSABILIDADE)
 # ==============================================================================
 def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminho_pdf_saida):
     doc = SimpleDocTemplate(
@@ -321,11 +321,15 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
         elementos.append(Spacer(1, 3))
         elementos.append(Paragraph(obs_adriana, ParagraphStyle('OBT', fontName='Helvetica-Oblique', fontSize=8.5, textColor=colors.HexColor('#333333'))))
 
-    elementos.append(Spacer(1, 20))
+    elementos.append(Spacer(1, 15))
 
     total_geral = payload_dados.get("valor_total", 0.0)
     estilo_total = ParagraphStyle('TOT', fontName='Helvetica-Bold', fontSize=12, textColor=colors.HexColor('#134074'), alignment=2)
     elementos.append(Paragraph(f"VALOR TOTAL A PAGAR: R$ {float_para_str_br(total_geral)}", estilo_total))
+
+    elementos.append(Spacer(1, 15))
+    estilo_resp = ParagraphStyle('RESP', fontName='Helvetica-Oblique', fontSize=8, textColor=colors.HexColor('#555555'), alignment=0)
+    elementos.append(Paragraph(f"<i>Relatório enviado pelo usuário <b>{promotor_nome}</b>, que é integralmente responsável pelas informações prestadas.</i>", estilo_resp))
 
     doc.build(elementos, onFirstPage=adicionar_rodape, onLaterPages=adicionar_rodape)
 
