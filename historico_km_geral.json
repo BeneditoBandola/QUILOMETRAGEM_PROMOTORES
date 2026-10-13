@@ -1008,7 +1008,7 @@
     "Fernanda Dias Ferreira_S41": {
         "id": 1791891958,
         "semana_ref": "41",
-        "intervalo_datas": "05/10 a 11/10",
+        "intervalo_datas": "05/10/2026 a 11/10/2026",
         "promotor": "Fernanda Dias Ferreira",
         "status": "FINALIZADO",
         "is_teste": false,
@@ -1026,7 +1026,7 @@
         "detalhes": [
             {
                 "dia": "Segunda",
-                "data": "12/10",
+                "data": "05/10",
                 "km": 87.0,
                 "sit": "Normal",
                 "km_ini": 84934.0,
@@ -1034,7 +1034,7 @@
             },
             {
                 "dia": "Terça",
-                "data": "13/10",
+                "data": "06/10",
                 "km": 63.0,
                 "sit": "Normal",
                 "km_ini": 85022.0,
@@ -1042,7 +1042,7 @@
             },
             {
                 "dia": "Quarta",
-                "data": "14/10",
+                "data": "07/10",
                 "km": 35.0,
                 "sit": "Normal",
                 "km_ini": 85085.0,
@@ -1050,7 +1050,7 @@
             },
             {
                 "dia": "Quinta",
-                "data": "15/10",
+                "data": "08/10",
                 "km": 58.0,
                 "sit": "Normal",
                 "km_ini": 85120.0,
@@ -1058,11 +1058,27 @@
             },
             {
                 "dia": "Sexta",
-                "data": "16/10",
+                "data": "09/10",
                 "km": 41.0,
                 "sit": "Normal",
                 "km_ini": 85178.0,
                 "km_fim": 85219.0
+            },
+            {
+                "dia": "Sábado",
+                "data": "10/10",
+                "km": 0.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Domingo",
+                "data": "11/10",
+                "km": 0.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 0.0
             }
         ]
     }
