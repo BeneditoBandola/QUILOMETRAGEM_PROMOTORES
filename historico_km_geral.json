@@ -938,5 +938,71 @@
                 "km_fim": 67.0
             }
         ]
+    },
+    "Madalla Teixeira Reis_S41": {
+        "id": 1791888659,
+        "semana_ref": "41",
+        "intervalo_datas": "05/10 a 11/10",
+        "promotor": "Madalla Teixeira Reis",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 471.0,
+        "valor_km": 551.0699999999999,
+        "valor_extras": 56.0,
+        "valor_total": 607.0699999999999,
+        "gastos_extras": [
+            {
+                "data": "08/10",
+                "desc": "Impressões em muriae",
+                "valor": 27.0
+            },
+            {
+                "data": "09/10",
+                "desc": "Impressões de caramelo cria para algumas fotos",
+                "valor": 29.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "05/10",
+                "km": 62.0,
+                "sit": "Normal",
+                "km_ini": 83780.0,
+                "km_fim": 83842.0
+            },
+            {
+                "dia": "Terça",
+                "data": "06/10",
+                "km": 104.0,
+                "sit": "Normal",
+                "km_ini": 83842.0,
+                "km_fim": 83946.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "07/10",
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "08/10",
+                "km": 249.0,
+                "sit": "Normal",
+                "km_ini": 83946.0,
+                "km_fim": 84195.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "09/10",
+                "km": 56.0,
+                "sit": "Normal",
+                "km_ini": 84195.0,
+                "km_fim": 84251.0
+            }
+        ]
     }
 }
