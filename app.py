@@ -257,7 +257,6 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
             Paragraph(f"R$ {float_para_str_br(reemb_d)}", estilo_td),
         ])
 
-    # Linha de Total do KM
     tabela_dados.append([
         Paragraph("<b>TOTAL GERAL</b>", estilo_th_tot),
         Paragraph("-", estilo_th_tot),
@@ -295,7 +294,6 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
                 Paragraph(f"R$ {float_para_str_br(val_g)}", estilo_td),
             ])
         
-        # Linha de Total das Despesas Extras
         tabela_gastos.append([
             Paragraph("<b>TOTAL DESPESAS</b>", estilo_th_tot),
             Paragraph("-", estilo_th_tot),
@@ -389,7 +387,7 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
         return False, str(e)
 
 # ==============================================================================
-# INTEGRAÇÃO COM GITHUB (JSON CENTRALIZADO)
+# INTEGRAÇÃO COM GITHUB (JSON CENTRALIZADO COM PROTEÇÃO DE SHA)
 # ==============================================================================
 def get_github_credentials():
     try:
@@ -421,11 +419,13 @@ def carregar_base_historico_github():
         pass
     return {}, None
 
-def salvar_base_historico_github(historico_dict, sha_existente=None, mensagem_commit="Atualização geral de KM"):
+def salvar_base_historico_github(historico_dict, mensagem_commit="Atualização geral de KM"):
     token, repo, branch = get_github_credentials()
     if not token or not repo:
         st.error("Credenciais do GitHub não configuradas nos Secrets do Streamlit!")
         return False
+
+    _, sha_recente = carregar_base_historico_github()
 
     url = f"https://api.github.com/repos/{repo}/contents/{ARQUIVO_JSON_GERAL}"
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
@@ -438,8 +438,8 @@ def salvar_base_historico_github(historico_dict, sha_existente=None, mensagem_co
         "content": conteudo_base64,
         "branch": branch
     }
-    if sha_existente:
-        payload["sha"] = sha_existente
+    if sha_recente:
+        payload["sha"] = sha_recente
 
     try:
         response = requests.put(url, headers=headers, json=payload, timeout=10)
@@ -521,7 +521,6 @@ if is_admin_benedito:
                         msg_commit = f"Excluído {chave_para_deletar} por Benedito. Justificativa: {justificativa_exclusao.strip()}"
                         ok_del = salvar_base_historico_github(
                             HISTORICO_GERAL,
-                            sha_existente=SHA_GERAL,
                             mensagem_commit=msg_commit
                         )
                         if ok_del:
@@ -560,7 +559,6 @@ if is_admin_benedito:
                     
                     ok_reclassificar = salvar_base_historico_github(
                         HISTORICO_GERAL,
-                        sha_existente=SHA_GERAL,
                         mensagem_commit=f"Reclassificado {promotor_obj} para Semana {nova_semana_alvo}"
                     )
                     if ok_reclassificar:
@@ -675,7 +673,6 @@ if is_admin_benedito:
                 st.info("Nenhum gasto extra registrado por este promotor nesta semana.")
 
             st.write("")
-            # Opção exclusiva para o Benedito reenviar o e-mail
             if st.button(f"📧 REENVIAR E-MAIL COM PDF PARA {promotor_escolhido_detalhe.upper()}", type="primary"):
                 with st.spinner("Gerando PDF e disparando e-mail..."):
                     ok_re, msg_re = enviar_email_com_pdf(promotor_escolhido_detalhe, int(num_semana_sel), intervalo_sel_str, detalhe_item)
@@ -703,12 +700,12 @@ if is_area_teste:
 
         sucessos = 0
         for p_nome in promotores_alvo:
-            dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+            dias_semana_teste = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
             detalhes_ficticios = []
             km_tot_fict = 0.0
             km_base = 100.0
 
-            for idx_d, d_nome in enumerate(dias_semana):
+            for idx_d, d_nome in enumerate(dias_semana_teste):
                 dt_d = (seg_t + timedelta(days=idx_d)).strftime("%d/%m")
                 sit_f = "Normal"
                 km_d_f = round(random.uniform(45.0, 95.0), 1)
@@ -752,7 +749,7 @@ if is_area_teste:
             if ok_mail:
                 sucessos += 1
 
-        ok_salvar = salvar_base_historico_github(HISTORICO_GERAL, sha_existente=SHA_GERAL, mensagem_commit=f"Testes em lote S{num_semana_teste}")
+        ok_salvar = salvar_base_historico_github(HISTORICO_GERAL, mensagem_commit=f"Testes em lote S{num_semana_teste}")
         if ok_salvar and sucessos > 0:
             st.success(f"✅ Testes executados com sucesso! {sucessos} relatório(s) gerado(s) e e-mail(s) disparado(s).")
             st.balloons()
@@ -766,7 +763,7 @@ if is_area_teste:
     st.stop()
 
 # ==============================================================================
-# FLUXO NORMAL DO PROMOTOR
+# FLUXO NORMAL DO PROMOTOR (COM TRAVA E MENU DE CONFIRMAÇÃO DE SEMANA)
 # ==============================================================================
 dados_promotor_atual = DADOS_PROMOTORES.get(promotor_sel, {})
 
@@ -783,17 +780,41 @@ with col_sair:
 st.markdown(f"**PROMOTOR(A):** {promotor_sel}")
 st.caption(f"🏠 {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
 
+st.divider()
+
+# ETAPA 1: MENU OBRIGATÓRIO DE SELEÇÃO DA SEMANA ANTES DE MOSTRAR O FORMULÁRIO
+st.markdown("### 🎯 QUAL É A SEMANA QUE DESEJA INFORMAR?")
+st.caption("Selecione com atenção o número da semana correspondente aos seus lançamentos.")
+
 semana_padrao_default = obter_semana_padrao_inteligente()
-num_semana = st.number_input("Nº DA SEMANA:", min_value=1, max_value=53, value=semana_padrao_default)
+num_semana = st.number_input("Nº DA SEMANA DE REFERÊNCIA:", min_value=1, max_value=53, value=semana_padrao_default)
 
 segunda, domingo = calcular_intervalo_semana(num_semana)
-intervalo_str = f"{segunda.strftime('%d/%m')} a {domingo.strftime('%d/%m')}"
-st.markdown(f"<div style='padding:6px 12px; background:#141414; border-left:4px solid #FDD818; margin-bottom:15px;'>📅 <b>PERÍODO:</b> Semana {num_semana} ({intervalo_str})</div>", unsafe_allow_html=True)
+intervalo_str = f"{segunda.strftime('%d/%m/%Y')} a {domingo.strftime('%d/%m/%Y')}"
+
+# EXIBIÇÃO CLARA DO CALENDÁRIO DA SEMANA ESCOLHIDA ANTES DE PROSSEGUIR
+st.markdown(f"""
+<div style='padding: 14px; background: #141414; border: 1px solid #333; border-left: 5px solid #FDD818; border-radius: 6px; margin-bottom: 20px;'>
+    <h4 style='color: #FDD818 !important; margin: 0 0 8px 0;'>📌 PERÍODO DA SEMANA {num_semana}:</h4>
+    <p style='font-size: 16px; margin: 0 0 10px 0;'><b>De {segunda.strftime('%d/%m')} até {domingo.strftime('%d/%m')} ({intervalo_str})</b></p>
+    <hr style='border-color: #222; margin: 8px 0;'/>
+    <p style='font-size: 13px; color: #CCC; margin: 0;'><b>Dias abrangidos neste período:</b></p>
+    <ul style='font-size: 13px; color: #AAA; margin: 4px 0 0 0; padding-left: 20px;'>
+        <li>Segunda-feira: {(segunda).strftime('%d/%m/%Y')}</li>
+        <li>Terça-feira: {(segunda + timedelta(days=1)).strftime('%d/%m/%Y')}</li>
+        <li>Quarta-feira: {(segunda + timedelta(days=2)).strftime('%d/%m/%Y')}</li>
+        <li>Quinta-feira: {(segunda + timedelta(days=3)).strftime('%d/%m/%Y')}</li>
+        <li>Sexta-feira: {(segunda + timedelta(days=4)).strftime('%d/%m/%Y')}</li>
+        <li>Sábado: {(segunda + timedelta(days=5)).strftime('%d/%m/%Y')} (Opcional)</li>
+        <li>Domingo: {(segunda + timedelta(days=6)).strftime('%d/%m/%Y')} (Opcional)</li>
+    </ul>
+</div>
+""", unsafe_allow_html=True)
 
 chave_registro = f"{promotor_sel}_S{num_semana}"
 dados_salvos = HISTORICO_GERAL.get(chave_registro, None)
 
-with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS", expanded=False):
+with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS ANTERIORES", expanded=False):
     st.markdown("Selecione um lançamento cadastrado para excluí-lo:")
     semanas_cadastradas = [k for k in HISTORICO_GERAL.keys() if k.startswith(f"{promotor_sel}_")]
     
@@ -820,7 +841,6 @@ with st.expander("🛠️ GERENCIAR OU APAGAR LANÇAMENTOS", expanded=False):
             del HISTORICO_GERAL[chave_para_apagar]
             sucesso_del = salvar_base_historico_github(
                 HISTORICO_GERAL, 
-                sha_existente=SHA_GERAL, 
                 mensagem_commit=f"Removido lançamento {chave_para_apagar}"
             )
             if sucesso_del:
@@ -836,20 +856,19 @@ if dados_salvos and dados_salvos.get("status") == "FINALIZADO":
     esta_finalizado = True
     is_t = dados_salvos.get("is_teste", False)
     txt_t = " [TESTE]" if is_t else ""
-    st.success(f"🔒 **SEMANA FINALIZADA E TRANSMITIDA{txt_t}.** Todos os campos estão bloqueados.")
+    st.success(f"🔒 **SEMANA {num_semana} FINALIZADA E TRANSMITIDA{txt_t}.** Todos os campos estão bloqueados.")
     if st.button("🔓 REABRIR PARA CORREÇÃO"):
         dados_salvos["status"] = "RASCUNHO"
         HISTORICO_GERAL[chave_registro] = dados_salvos
         sucesso_reabrir = salvar_base_historico_github(
             HISTORICO_GERAL,
-            sha_existente=SHA_GERAL,
             mensagem_commit=f"Reaberto para edição S{num_semana} - {promotor_sel}"
         )
         if sucesso_reabrir:
             st.success("Semana destravada com sucesso!")
             st.rerun()
 elif dados_salvos:
-    st.warning("📝 Rascunho salvo em aberto. Edição liberada.")
+    st.warning(f"📝 Rascunho da Semana {num_semana} salvo em aberto. Edição liberada.")
 
 # ==============================================================================
 # REGISTROS DIÁRIOS (QUILOMETRAGEM)
@@ -1050,32 +1069,35 @@ if not esta_finalizado:
             HISTORICO_GERAL[chave_registro] = payload
             sucesso = salvar_base_historico_github(
                 HISTORICO_GERAL, 
-                sha_existente=SHA_GERAL,
                 mensagem_commit=f"Rascunho S{num_semana} - {promotor_sel}"
             )
             if sucesso:
-                st.success("Rascunho salvo com sucesso!")
+                st.success(f"Rascunho da Semana {num_semana} salvo com sucesso!")
                 st.rerun()
 
     with col_btn2:
-        st.markdown("<p style='font-size: 13px; color: #EDEDED; line-height: 1.4; margin-bottom: 8px;'>Confirmo os dados acima e estou ciente de que sou integralmente responsável pelas informações prestadas neste envio.</p>", unsafe_allow_html=True)
-        termo_aceito = st.checkbox("Li e concordo com o termo acima")
+        st.markdown(f"<p style='font-size: 13px; color: #EDEDED; line-height: 1.4; margin-bottom: 8px;'>⚠️ <b>ATENÇÃO:</b> Você está enviando os dados referentes à <b>Semana {num_semana} ({intervalo_str})</b>. Confirmo que a semana está correta e assumo total responsabilidade pelas informações.</p>", unsafe_allow_html=True)
+        
+        # TRAVA DE SEGURANÇA: PERGUNTA EXPLÍCITA ANTES DE FINALIZAR
+        confirmacao_texto = st.text_input(f"DIGITE 'SIM' PARA CONFIRMAR O ENVIO DA SEMANA {num_semana}:", placeholder="Digite SIM aqui", key=f"conf_envio_s{num_semana}")
+        termo_aceito = st.checkbox("Li e concordo com os termos e valores informados")
         
         if st.button("FINALIZAR SEMANA 🚀", type="primary"):
-            if not termo_aceito:
+            if confirmacao_texto.strip().upper() != "SIM":
+                st.error(f"❌ Você precisa digitar 'SIM' no campo acima confirmando que está enviando a Semana {num_semana}!")
+            elif not termo_aceito:
                 st.error("❌ Você precisa marcar o termo de confirmação e responsabilidade antes de finalizar a semana!")
             else:
                 payload = construir_payload("FINALIZADO")
                 HISTORICO_GERAL[chave_registro] = payload
                 sucesso = salvar_base_historico_github(
                     HISTORICO_GERAL, 
-                    sha_existente=SHA_GERAL,
                     mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
                 )
                 if sucesso:
                     ok_email, msg_email = enviar_email_com_pdf(promotor_sel, num_semana, intervalo_str, payload)
                     if ok_email:
-                        st.success("Semana finalizada, bloqueada e e-mail com PDF executivo enviado com sucesso!")
+                        st.success(f"Semana {num_semana} finalizada, bloqueada e e-mail com PDF executivo enviado com sucesso!")
                     else:
                         st.warning(f"Semana finalizada no GitHub, mas houve um erro ao enviar o e-mail: {msg_email}")
                     st.balloons()
