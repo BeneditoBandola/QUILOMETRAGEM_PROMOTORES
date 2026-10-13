@@ -1099,5 +1099,67 @@
             }
         ],
         "observacao_adriana": "Adriana, o lançamento foi feito para a semana 42 incorretamente, segue o que deve ser considerado, semana 41. Obrigado!"
+    },
+    "Fernanda Dias Ferreira_S43": {
+        "id": 1791894650,
+        "semana_ref": "43",
+        "intervalo_datas": "19/10/2026 a 25/10/2026",
+        "promotor": "Fernanda Dias Ferreira",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 0.0,
+        "valor_km": 0.0,
+        "valor_extras": 1.0,
+        "valor_total": 1.0,
+        "gastos_extras": [
+            {
+                "data": "19/10",
+                "desc": "teste benedito desconsiderar",
+                "valor": 1.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "19/10",
+                "km": 0.0,
+                "sit": "Falta",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Terça",
+                "data": "20/10",
+                "km": 0.0,
+                "sit": "Falta",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "21/10",
+                "km": 0.0,
+                "sit": "Falta",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "22/10",
+                "km": 0.0,
+                "sit": "Falta",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "23/10",
+                "km": 0.0,
+                "sit": "Falta",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
