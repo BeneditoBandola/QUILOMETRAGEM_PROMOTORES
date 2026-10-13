@@ -751,5 +751,76 @@
                 "km_fim": 189.5
             }
         ]
+    },
+    "Pamela Camila de Almeida Alexandrino_S41": {
+        "id": 1791852337,
+        "semana_ref": "41",
+        "intervalo_datas": "05/10 a 11/10",
+        "promotor": "Pamela Camila de Almeida Alexandrino",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 477.1,
+        "valor_km": 558.207,
+        "valor_extras": 32.3,
+        "valor_total": 590.507,
+        "gastos_extras": [
+            {
+                "data": "06/10",
+                "desc": "Pedágio ida e volta ( andradas)  10,10 cada",
+                "valor": 20.2
+            },
+            {
+                "data": "07/10",
+                "desc": "Impressões",
+                "valor": 8.5
+            },
+            {
+                "data": "09/10",
+                "desc": "Impressões",
+                "valor": 3.6
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "05/10",
+                "km": 42.7,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 42.7
+            },
+            {
+                "dia": "Terça",
+                "data": "06/10",
+                "km": 81.9,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 81.9
+            },
+            {
+                "dia": "Quarta",
+                "data": "07/10",
+                "km": 29.8,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 29.8
+            },
+            {
+                "dia": "Quinta",
+                "data": "08/10",
+                "km": 281.3,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 281.3
+            },
+            {
+                "dia": "Sexta",
+                "data": "09/10",
+                "km": 41.4,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 41.4
+            }
+        ]
     }
 }
