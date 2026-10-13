@@ -885,16 +885,16 @@
         ]
     },
     "Saruete Valeska Stabile de Oliveira_S42": {
-        "id": 1791884551,
+        "id": 1791884720,
         "semana_ref": "42",
         "intervalo_datas": "12/10 a 18/10",
         "promotor": "Saruete Valeska Stabile de Oliveira",
-        "status": "RASCUNHO",
+        "status": "FINALIZADO",
         "is_teste": false,
-        "km_total": 199.0,
-        "valor_km": 232.82999999999998,
+        "km_total": 255.0,
+        "valor_km": 298.34999999999997,
         "valor_extras": 0,
-        "valor_total": 232.82999999999998,
+        "valor_total": 298.34999999999997,
         "gastos_extras": [],
         "detalhes": [
             {
@@ -908,34 +908,34 @@
             {
                 "dia": "Terça",
                 "data": "13/10",
-                "km": 61.0,
+                "km": 60.0,
                 "sit": "Normal",
                 "km_ini": 0.0,
-                "km_fim": 61.0
+                "km_fim": 60.0
             },
             {
                 "dia": "Quarta",
                 "data": "14/10",
-                "km": 69.0,
+                "km": 65.0,
                 "sit": "Normal",
                 "km_ini": 0.0,
-                "km_fim": 69.0
+                "km_fim": 65.0
             },
             {
                 "dia": "Quinta",
                 "data": "15/10",
-                "km": 12.0,
+                "km": 63.0,
                 "sit": "Normal",
-                "km_ini": 56.0,
-                "km_fim": 68.0
+                "km_ini": 0.0,
+                "km_fim": 63.0
             },
             {
                 "dia": "Sexta",
                 "data": "16/10",
-                "km": 57.0,
+                "km": 67.0,
                 "sit": "Normal",
                 "km_ini": 0.0,
-                "km_fim": 57.0
+                "km_fim": 67.0
             }
         ]
     }
