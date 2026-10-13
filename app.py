@@ -353,6 +353,778 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
     obs_adriana = payload_dados.get("observacao_adriana", "")
     bloco_obs_email = ""
     if obs_adriana.strip():
-        bloco_obs_email = f"""
-        <div style="background-color: #FFF9E6; border-left: 4px solid #FDD818; padding: 10px; margin: 15px 0;">
-            <p style="margin: 0; font-size: 13px; color: #333;">
+        bloco_obs_email = (
+            '<div style="background-color: #FFF9E6; border-left: 4px solid #FDD818; padding: 10px; margin: 15px 0;">'
+            '<p style="margin: 0; font-size: 13px; color: #333;"><b>💬 Observação do Benedito para Adriana:</b></p>'
+            f'<p style="margin: 5px 0 0 0; font-size: 13px; color: #444; font-style: italic;">{obs_adriana}</p>'
+            '</div>'
+        )
+
+    corpo_html = f"""
+    <html>
+      <body style="font-family: Arial, sans-serif; color: #333;">
+        <h2 style="color: #134074;">Minassal - Fechamento de KM e Reembolso {sufixo_assunto}</h2>
+        <p><b>Promotor(a):</b> {promotor_nome}</p>
+        <p><b>Semana de Referência:</b> Semana {semana_num} ({intervalo})</p>
+        <hr/>
+        {bloco_obs_email}
+        <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM e despesas extras.</p>
+        <p><b>Valor Total a Pagar: R$ {float_para_str_br(payload_dados['valor_total'])}</b></p>
+        <p style="font-size: 11px; color: #777; margin-top: 20px;">E-mail automático enviado pelo sistema de Controle de KM da Minassal.</p>
+        <p style="font-size: 10px; color: #888; border-top: 1px solid #eee; margin-top: 15px; padding-top: 5px;">Desenvolvido por Benedito Bandola</p>
+      </body>
+    </html>
+    """
+
+    msg = MIMEMultipart()
+    msg["Subject"] = assunto
+    msg["From"] = EMAIL_REMETENTE
+    msg["To"] = ", ".join(destinatarios)
+    msg.attach(MIMEText(corpo_html, "html"))
+
+    try:
+        with open(nome_arq_pdf, "rb") as f:
+            part = MIMEBase("application", "octet-stream")
+            part.set_payload(f.read())
+        encoders.encode_base64(part)
+        part.add_header("Content-Disposition", f"attachment; filename= {nome_arq_pdf}")
+        msg.attach(part)
+    except Exception as e:
+        return False, f"Erro ao anexar PDF: {e}"
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL_REMETENTE, smtp_password)
+        server.sendmail(EMAIL_REMETENTE, destinatarios, msg.as_string())
+        server.quit()
+        if os.path.exists(nome_arq_pdf):
+            os.remove(nome_arq_pdf)
+        return True, "E-mail com PDF enviado com sucesso!"
+    except Exception as e:
+        return False, str(e)
+
+# ==============================================================================
+# INTEGRAÇÃO COM GITHUB (JSON CENTRALIZADO COM PROTEÇÃO DE SHA)
+# ==============================================================================
+def get_github_credentials():
+    try:
+        return (
+            st.secrets["GITHUB_TOKEN"],
+            st.secrets["GITHUB_REPO"],
+            st.secrets.get("GITHUB_BRANCH", "main")
+        )
+    except Exception:
+        return None, None, None
+
+def carregar_base_historico_github():
+    token, repo, branch = get_github_credentials()
+    if not token or not repo:
+        return {}, None
+
+    url = f"https://api.github.com/repos/{repo}/contents/{ARQUIVO_JSON_GERAL}?ref={branch}"
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+    
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        if response.status_code == 200:
+            data = response.json()
+            conteudo_base64 = data.get("content", "")
+            sha = data.get("sha", "")
+            conteudo_json = json.loads(base64.b64decode(conteudo_base64).decode('utf-8'))
+            return conteudo_json, sha
+    except requests.RequestException:
+        pass
+    return {}, None
+
+def salvar_base_historico_github(historico_dict, mensagem_commit="Atualização geral de KM"):
+    token, repo, branch = get_github_credentials()
+    if not token or not repo:
+        st.error("Credenciais do GitHub não configuradas nos Secrets do Streamlit!")
+        return False
+
+    _, sha_recente = carregar_base_historico_github()
+
+    url = f"https://api.github.com/repos/{repo}/contents/{ARQUIVO_JSON_GERAL}"
+    headers = {"Authorization": f"Bearer {token}", "Accept": "application/vnd.github.v3+json"}
+
+    conteudo_json_str = json.dumps(historico_dict, indent=4, ensure_ascii=False)
+    conteudo_base64 = base64.b64encode(conteudo_json_str.encode('utf-8')).decode('utf-8')
+
+    payload = {
+        "message": mensagem_commit,
+        "content": conteudo_base64,
+        "branch": branch
+    }
+    if sha_recente:
+        payload["sha"] = sha_recente
+
+    try:
+        response = requests.put(url, headers=headers, json=payload, timeout=10)
+        return response.status_code in [200, 201]
+    except requests.RequestException as e:
+        st.error(f"Erro ao salvar dados no GitHub: {e}")
+        return False
+
+HISTORICO_GERAL, SHA_GERAL = carregar_base_historico_github()
+
+# ==============================================================================
+# TELA DE IDENTIFICAÇÃO (COM AUTENTICAÇÃO PARA BENEDITO)
+# ==============================================================================
+if "usuario_ativo" not in st.session_state:
+    st.session_state.usuario_ativo = None
+
+if not st.session_state.usuario_ativo:
+    st.markdown("<h1 style='text-align: center; color: #FDD818 !important;'># ACESSO DE PROMOTORES</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align: center; color: #888;'>SELECIONE SEU PERFIL OU ENTRE NA ÁREA DE GESTÃO</p>", unsafe_allow_html=True)
+    
+    opcoes_acesso = ["-- Selecione seu perfil ou área --", "👑 Benedito Bandola (Painel de Gestão)", "🧪 [ÁREA DE TESTES / SIMULAÇÃO]"] + PROMOTORES
+    escolha_promotor = st.selectbox("QUEM É VOCÊ?", options=opcoes_acesso)
+    
+    senha_admin = ""
+    if "Benedito Bandola" in escolha_promotor:
+        senha_admin = st.text_input("DIGITE A SENHA DE ACESSO:", type="password")
+
+    if st.button("ACESSAR SISTEMA ➔", type="primary"):
+        if escolha_promotor != "-- Selecione seu perfil ou área --":
+            if "Benedito Bandola" in escolha_promotor:
+                if senha_admin == "1234":
+                    st.session_state.usuario_ativo = escolha_promotor
+                    st.rerun()
+                else:
+                    st.error("❌ Senha incorreta! A senha do painel é 1234.")
+            else:
+                st.session_state.usuario_ativo = escolha_promotor
+                st.rerun()
+        else:
+            st.warning("Por favor, selecione uma opção antes de prosseguir.")
+    st.stop()
+
+promotor_sel = st.session_state.usuario_ativo
+is_admin_benedito = ("Benedito Bandola" in promotor_sel)
+is_area_teste = ("ÁREA DE TESTES" in promotor_sel)
+
+# ==============================================================================
+# PAINEL DE GESTÃO EXCLUSIVO (BENEDITO BANDOLA)
+# ==============================================================================
+if is_admin_benedito:
+    st.markdown("<h2 style='color:#FDD818 !important;'>👑 PAINEL DE GESTÃO - CONSULTA E AUDITORIA</h2>", unsafe_allow_html=True)
+    st.caption("Consulte os lançamentos por semana, reclassifique semanas, exclua registros ou reenvie e-mails.")
+    
+    if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
+        st.session_state.usuario_ativo = None
+        st.rerun()
+
+    st.divider()
+
+    with st.expander("🗑️ EXCLUIR LANÇAMENTO DE UM PROMOTOR (COM JUSTIFICATIVA)", expanded=False):
+        if HISTORICO_GERAL:
+            chaves_existentes_del = sorted(list(HISTORICO_GERAL.keys()))
+            chave_para_deletar = st.selectbox("Selecione o registro (Promotor + Semana) para apagar:", options=chaves_existentes_del, key="sel_del_reg")
+            
+            if chave_para_deletar:
+                dados_del_item = HISTORICO_GERAL[chave_para_deletar]
+                p_del_nome = dados_del_item.get("promotor", "")
+                s_del_num = dados_del_item.get("semana_ref", "")
+                
+                st.warning(f"⚠️ Atenção: Você está selecionando o lançamento do(a) promotor(a) **{p_del_nome}** referente à **Semana {s_del_num}**.")
+                
+                justificativa_exclusao = st.text_input("✍️ INFORME A JUSTIFICATIVA OBRIGATÓRIA PARA A EXCLUSÃO:", placeholder="Ex: Lançamento duplicado, enviado incorretamente...")
+                
+                if st.button("🔥 CONFIRMAR E APAGAR ESTE REGISTRO"):
+                    if not justificativa_exclusao.strip():
+                        st.error("❌ A justificativa é obrigatória para prosseguir com a exclusão!")
+                    else:
+                        del HISTORICO_GERAL[chave_para_deletar]
+                        msg_commit = f"Excluído {chave_para_deletar} por Benedito. Justificativa: {justificativa_exclusao.strip()}"
+                        ok_del = salvar_base_historico_github(
+                            HISTORICO_GERAL,
+                            mensagem_commit=msg_commit
+                        )
+                        if ok_del:
+                            st.success("✅ Registro apagado com sucesso e justificativa registrada no histórico!")
+                            st.rerun()
+                        else:
+                            st.error("Erro ao salvar alteração no GitHub.")
+        else:
+            st.info("Nenhum registro para excluir.")
+
+    with st.expander("🔄 RECLASSIFICAR SEMANA DE UM LANÇAMENTO (EX: CORRIGIR 40 PARA 39)", expanded=False):
+        if HISTORICO_GERAL:
+            chaves_existentes = sorted(list(HISTORICO_GERAL.keys()))
+            chave_para_editar = st.selectbox("Selecione o registro para alterar a semana:", options=chaves_existentes, key="sel_edit_reg")
+            
+            if chave_para_editar:
+                dados_atual_editar = HISTORICO_GERAL[chave_para_editar]
+                promotor_obj = dados_atual_editar.get("promotor", "")
+                semana_atual_obj = int(dados_atual_editar.get("semana_ref", "1"))
+                
+                st.markdown(f"**Promotor:** {promotor_obj} | **Semana Atual no Registro:** {semana_atual_obj}")
+                
+                nova_semana_alvo = st.number_input("NOVO NÚMERO DA SEMANA CORRETO:", min_value=1, max_value=53, value=semana_atual_obj)
+                
+                if st.button("⚡ SALVAR NOVA SEMANA PARA ESTE REGISTRO"):
+                    seg_n, dom_n = calcular_intervalo_semana(int(nova_semana_alvo))
+                    novo_intervalo_str = f"{seg_n.strftime('%d/%m/%Y')} a {dom_n.strftime('%d/%m/%Y')}"
+                    
+                    dias_nomes_padrao = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+                    novos_detalhes_reclassificados = []
+                    for idx_d, d_nome in enumerate(dias_nomes_padrao):
+                        dt_dia_calc = seg_n + timedelta(days=idx_d)
+                        dt_str = dt_dia_calc.strftime("%d/%m")
+                        
+                        km_antigo = 0.0
+                        sit_antiga = "Normal"
+                        kmi_antigo = 0.0
+                        kmf_antigo = 0.0
+                        for d_old in dados_atual_editar.get("detalhes", []):
+                            if d_old.get("dia") == d_nome:
+                                km_antigo = d_old.get("km", 0.0)
+                                sit_antiga = d_old.get("sit", "Normal")
+                                kmi_antigo = d_old.get("km_ini", 0.0)
+                                kmf_antigo = d_old.get("km_fim", 0.0)
+                                break
+                                
+                        novos_detalhes_reclassificados.append({
+                            "dia": d_nome,
+                            "data": dt_str,
+                            "km": km_antigo,
+                            "sit": sit_antiga,
+                            "km_ini": kmi_antigo,
+                            "km_fim": kmf_antigo
+                        })
+
+                    dados_atual_editar["semana_ref"] = str(nova_semana_alvo)
+                    dados_atual_editar["intervalo_datas"] = novo_intervalo_str
+                    dados_atual_editar["detalhes"] = novos_detalhes_reclassificados
+                    
+                    nova_chave = f"{promotor_obj}_S{nova_semana_alvo}"
+                    HISTORICO_GERAL[nova_chave] = dados_atual_editar
+                    if chave_para_editar != nova_chave and chave_para_editar in HISTORICO_GERAL:
+                        del HISTORICO_GERAL[chave_para_editar]
+                    
+                    ok_reclassificar = salvar_base_historico_github(
+                        HISTORICO_GERAL,
+                        mensagem_commit=f"Reclassificado {promotor_obj} para Semana {nova_semana_alvo} com calendário exato"
+                    )
+                    if ok_reclassificar:
+                        st.success(f"✅ Lançamento movido para a Semana {nova_semana_alvo} e o calendário foi atualizado com sucesso!")
+                        st.rerun()
+                    else:
+                        st.error("Erro ao salvar alteração no GitHub.")
+        else:
+            st.info("Nenhum registro para reclassificar.")
+
+    st.divider()
+
+    if not HISTORICO_GERAL:
+        st.info("Nenhum lançamento registrado no sistema até o momento.")
+        st.stop()
+
+    semanas_cadastradas = sorted(
+        list(set([v.get("semana_ref") for v in HISTORICO_GERAL.values() if "semana_ref" in v])), 
+        key=lambda x: int(x) if x.isdigit() else 0
+    )
+
+    if not semanas_cadastradas:
+        st.warning("Nenhuma semana encontrada nos registros.")
+        st.stop()
+
+    semana_atual_default = obter_semana_padrao_inteligente()
+    opcoes_semanas_fmt = [f"Semana {s}" for s in semanas_cadastradas]
+    
+    default_index = 0
+    s_atual_str = f"Semana {semana_atual_default}"
+    if s_atual_str in opcoes_semanas_fmt:
+        default_index = opcoes_semanas_fmt.index(s_atual_str)
+
+    semana_escolhida_str = st.selectbox("📅 SELECIONE A SEMANA PARA CONSULTA:", options=opcoes_semanas_fmt, index=default_index)
+    num_semana_sel = semana_escolhida_str.replace("Semana ", "")
+
+    seg_sel, dom_sel = calcular_intervalo_semana(int(num_semana_sel))
+    intervalo_sel_str = f"{seg_sel.strftime('%d/%m/%Y')} a {dom_sel.strftime('%d/%m/%Y')}"
+    st.markdown(f"<div style='padding:8px 14px; background:#141414; border-left:4px solid #FDD818; margin-bottom:15px;'>📌 <b>PERÍODO DA SEMANA {num_semana_sel}:</b> {intervalo_sel_str}</div>", unsafe_allow_html=True)
+
+    tabela_registros = []
+    for chave, dados in HISTORICO_GERAL.items():
+        if dados.get("semana_ref") == str(num_semana_sel):
+            tabela_registros.append({
+                "Chave": chave,
+                "Promotor": dados.get("promotor", "Desconhecido"),
+                "Status": dados.get("status", "RASCUNHO"),
+                "KM Total": dados.get("km_total", 0.0),
+                "Valor KM (R$)": dados.get("valor_km", 0.0),
+                "Extras (R$)": dados.get("valor_extras", 0.0),
+                "Total (R$)": dados.get("valor_total", 0.0),
+                "DadosCompletos": dados
+            })
+
+    if not tabela_registros:
+        st.warning(f"Nenhum lançamento encontrado para a Semana {num_semana_sel}.")
+    else:
+        df_resumo = pd.DataFrame(tabela_registros)
+        
+        total_km_semana = df_resumo["KM Total"].sum()
+        total_pago_semana = df_resumo["Total (R$)"].sum()
+        
+        m1, m2, m3 = st.columns(3)
+        m1.metric("PROMOTORES LANÇARAM", f"{len(df_resumo)} / {len(PROMOTORES)}")
+        m2.metric("TOTAL KM DA SEMANA", f"{float_para_str_br(total_km_semana)} km")
+        m3.metric("VALOR TOTAL DA SEMANA", f"R$ {float_para_str_br(total_pago_semana)}")
+
+        st.write("")
+        st.markdown(f"### 📋 RESUMO DOS PROMOTORES — {semana_escolhida_str.upper()}")
+        
+        df_exibicao = df_resumo[["Promotor", "Status", "KM Total", "Total (R$)"]].copy()
+        df_exibicao["KM Total"] = df_exibicao["KM Total"].apply(lambda x: f"{float_para_str_br(x)} km")
+        df_exibicao["Total (R$)"] = df_exibicao["Total (R$)"].apply(lambda x: f"R$ {float_para_str_br(x)}")
+        st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
+
+        csv_data = df_resumo.drop(columns=["DadosCompletos"]).to_csv(index=False, encoding='utf-8-sig').encode('utf-8')
+        st.download_button(
+            label=f"📥 BAIXAR DADOS DA {semana_escolhida_str.upper()} EM CSV (EXCEL)",
+            data=csv_data,
+            file_name=f"relatorio_km_minassal_semana_{num_semana_sel}_{datetime.now().strftime('%Y%m%d')}.csv",
+            mime="text/csv"
+        )
+
+        st.divider()
+        st.markdown("### 🔍 INSPEÇÃO DETALHADA POR PROMOTOR NESTA SEMANA")
+        
+        promotores_na_semana = df_resumo["Promotor"].tolist()
+        promotor_escolhido_detalhe = st.selectbox("Selecione o promotor para ver o diário e despesas:", options=promotores_na_semana)
+        
+        if promotor_escolhido_detalhe:
+            item_filtrado = df_resumo[df_resumo["Promotor"] == promotor_escolhido_detalhe].iloc[0]
+            detalhe_item = item_filtrado["DadosCompletos"]
+            
+            st.markdown(f"**Promotor(a):** {promotor_escolhido_detalhe} | **Status:** {detalhe_item.get('status')}")
+            
+            dias_det = detalhe_item.get("detalhes", [])
+            if dias_det:
+                st.markdown("**Quilometragem Diária:**")
+                df_dias = pd.DataFrame(dias_det)
+                cols_mostrar = [c for c in ["dia", "data", "sit", "km_ini", "km_fim", "km"] if c in df_dias.columns]
+                df_dias_ex = df_dias[cols_mostrar].rename(columns={
+                    "dia": "Dia", "data": "Data", "sit": "Situação", "km_ini": "KM Inicial", "km_fim": "KM Final", "km": "KM Rodado"
+                })
+                st.dataframe(df_dias_ex, use_container_width=True, hide_index=True)
+            
+            gastos_det = detalhe_item.get("gastos_extras", [])
+            if gastos_det:
+                st.markdown("**Gastos Extras Registrados:**")
+                df_gastos = pd.DataFrame(gastos_det)
+                st.dataframe(df_gastos, use_container_width=True, hide_index=True)
+            else:
+                st.info("Nenhum gasto extra registrado por este promotor nesta semana.")
+
+            st.write("")
+            obs_para_adriana = st.text_area(
+                f"💬 Observação / Justificativa para a Adriana (Exclusivo para este envio de {promotor_escolhido_detalhe}):",
+                value=detalhe_item.get("observacao_adriana", ""),
+                placeholder="Insira aqui qualquer recado ou justificativa para a Adriana...",
+                key=f"obs_adm_{promotor_escolhido_detalhe}_{num_semana_sel}"
+            )
+
+            if st.button(f"📧 REENVIAR E-MAIL COM PDF PARA {promotor_escolhido_detalhe.upper()}", type="primary"):
+                detalhe_item["observacao_adriana"] = obs_para_adriana.strip()
+                HISTORICO_GERAL[item_filtrado["Chave"]] = detalhe_item
+                salvar_base_historico_github(HISTORICO_GERAL, mensagem_commit=f"Atualizada observação Adriana para {promotor_escolhido_detalhe}")
+
+                with st.spinner("Gerando PDF e disparando e-mail..."):
+                    ok_re, msg_re = enviar_email_com_pdf(promotor_escolhido_detalhe, int(num_semana_sel), intervalo_sel_str, detalhe_item)
+                    if ok_re:
+                        st.success(f"✅ E-mail reenviado com sucesso para {promotor_escolhido_detalhe} com a observação inclusa!")
+                    else:
+                        st.error(f"❌ Erro ao enviar e-mail: {msg_re}")
+
+    st.stop()
+
+# ==============================================================================
+# ÁREA DE TESTES
+# ==============================================================================
+if is_area_teste:
+    st.markdown("### 🧪 ÁREA DE TESTES E SIMULAÇÃO")
+    st.info("Escolha abaixo o promotor (ou todos em lote), informe a semana e clique para gerar e disparar os testes de e-mail com PDF.")
+    
+    escolha_teste_promotor = st.selectbox("ESCOLHA O PROMOTOR PARA O TESTE:", options=["🔄 Todos os Promotores (Lote)"] + PROMOTORES)
+    num_semana_teste = st.number_input("Nº DA SEMANA PARA O TESTE:", min_value=1, max_value=53, value=obter_semana_padrao_inteligente())
+    
+    if st.button("⚡ GERAR E DISPARAR TESTE(S) AGORA"):
+        promotores_alvo = PROMOTORES if escolha_teste_promotor == "🔄 Todos os Promotores (Lote)" else [escolha_teste_promotor]
+        seg_t, dom_t = calcular_intervalo_semana(num_semana_teste)
+        int_str_t = f"{seg_t.strftime('%d/%m/%Y')} a {dom_t.strftime('%d/%m/%Y')}"
+
+        sucessos = 0
+        for p_nome in promotores_alvo:
+            dias_semana_teste = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+            detalhes_ficticios = []
+            km_tot_fict = 0.0
+            km_base = 100.0
+
+            for idx_d, d_nome in enumerate(dias_semana_teste):
+                dt_dia_calc = seg_t + timedelta(days=idx_d)
+                dt_d = dt_dia_calc.strftime("%d/%m")
+                sit_f = "Normal"
+                km_d_f = round(random.uniform(45.0, 95.0), 1)
+                kmi_f = km_base
+                kmf_f = km_base + km_d_f
+                km_base = kmf_f
+
+                detalhes_ficticios.append({
+                    "dia": d_nome,
+                    "data": dt_d,
+                    "km": km_d_f,
+                    "sit": sit_f,
+                    "km_ini": kmi_f,
+                    "km_fim": kmf_f
+                })
+                km_tot_fict += km_d_f
+
+            gastos_fict = [{"data": seg_t.strftime("%d/%m"), "desc": "Almoço de Teste", "valor": 42.50}, {"data": seg_t.strftime("%d/%m"), "desc": "Estacionamento", "valor": 15.00}]
+            v_km_fict = km_tot_fict * VALOR_KM_TAXA
+            v_ext_fict = sum(g["valor"] for g in gastos_fict)
+            v_tot_fict = v_km_fict + v_ext_fict
+
+            payload_teste = {
+                "id": int(datetime.now().timestamp()),
+                "semana_ref": str(num_semana_teste),
+                "intervalo_datas": int_str_t,
+                "promotor": p_nome,
+                "status": "FINALIZADO",
+                "is_teste": True,
+                "km_total": km_tot_fict,
+                "valor_km": v_km_fict,
+                "valor_extras": v_ext_fict,
+                "valor_total": v_tot_fict,
+                "gastos_extras": gastos_fict,
+                "detalhes": detalhes_ficticios,
+                "observacao_adriana": "Teste automatizado do sistema."
+            }
+
+            chave_reg_t = f"{p_nome}_S{num_semana_teste}"
+            HISTORICO_GERAL[chave_reg_t] = payload_teste
+            ok_mail, _ = enviar_email_com_pdf(p_nome, num_semana_teste, int_str_t, payload_teste)
+            if ok_mail:
+                sucessos += 1
+
+        ok_salvar = salvar_base_historico_github(HISTORICO_GERAL, mensagem_commit=f"Testes em lote S{num_semana_teste}")
+        if ok_salvar and sucessos > 0:
+            st.success(f"✅ Testes executados com sucesso! {sucessos} relatório(s) gerado(s) e e-mail(s) disparado(s).")
+            st.balloons()
+        else:
+            st.warning("Houve falha ao salvar no GitHub ou disparar os e-mails.")
+
+    st.write("")
+    if st.button("⬅️ VOLTAR À SELEÇÃO DE PERFIL"):
+        st.session_state.usuario_ativo = None
+        st.rerun()
+    st.stop()
+
+# ==============================================================================
+# FLUXO NORMAL DO PROMOTOR (SEM OPÇÃO DE EXCLUIR LANÇAMENTOS)
+# ==============================================================================
+dados_promotor_atual = DADOS_PROMOTORES.get(promotor_sel, {})
+
+col_tit, col_sair = st.columns([3, 1])
+with col_tit:
+    st.markdown("<h2 style='color:#FDD818 !important; margin:0;'># CONTROLE DE KM</h2>", unsafe_allow_html=True)
+with col_sair:
+    st.write("")
+    if st.button("TROCAR 🔄"):
+        st.session_state.usuario_ativo = None
+        st.session_state.clear()
+        st.rerun()
+
+st.markdown(f"**PROMOTOR(A):** {promotor_sel}")
+st.caption(f"🏠 {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
+
+st.divider()
+
+st.markdown("### 🎯 QUAL É A SEMANA QUE DESEJA INFORMAR?")
+st.caption("Selecione com atenção o número da semana correspondente aos seus lançamentos.")
+
+semana_padrao_default = obter_semana_padrao_inteligente()
+num_semana = st.number_input("Nº DA SEMANA DE REFERÊNCIA:", min_value=1, max_value=53, value=semana_padrao_default)
+
+segunda, domingo = calcular_intervalo_semana(num_semana)
+intervalo_str = f"{segunda.strftime('%d/%m/%Y')} a {domingo.strftime('%d/%m/%Y')}"
+
+st.markdown(f"""
+<div style='padding: 14px; background: #141414; border: 1px solid #333; border-left: 5px solid #FDD818; border-radius: 6px; margin-bottom: 20px;'>
+    <h4 style='color: #FDD818 !important; margin: 0 0 8px 0;'>📌 CALENDÁRIO EXATO DA SEMANA {num_semana}:</h4>
+    <p style='font-size: 16px; margin: 0 0 10px 0;'><b>De {segunda.strftime('%d/%m/%Y')} até {domingo.strftime('%d/%m/%Y')}</b></p>
+    <hr style='border-color: #222; margin: 8px 0;'/>
+    <p style='font-size: 13px; color: #CCC; margin: 0;'><b>Datas oficiais de cada dia desta semana:</b></p>
+    <ul style='font-size: 13px; color: #AAA; margin: 4px 0 0 0; padding-left: 20px;'>
+        <li>Segunda-feira: {(segunda).strftime('%d/%m/%Y')}</li>
+        <li>Terça-feira: {(segunda + timedelta(days=1)).strftime('%d/%m/%Y')}</li>
+        <li>Quarta-feira: {(segunda + timedelta(days=2)).strftime('%d/%m/%Y')}</li>
+        <li>Quinta-feira: {(segunda + timedelta(days=3)).strftime('%d/%m/%Y')}</li>
+        <li>Sexta-feira: {(segunda + timedelta(days=4)).strftime('%d/%m/%Y')}</li>
+        <li>Sábado: {(segunda + timedelta(days=5)).strftime('%d/%m/%Y')} (Opcional)</li>
+        <li>Domingo: {(segunda + timedelta(days=6)).strftime('%d/%m/%Y')} (Opcional)</li>
+    </ul>
+</div>
+""", unsafe_allow_html=True)
+
+chave_registro = f"{promotor_sel}_S{num_semana}"
+dados_salvos = HISTORICO_GERAL.get(chave_registro, None)
+
+st.divider()
+
+esta_finalizado = False
+if dados_salvos and dados_salvos.get("status") == "FINALIZADO":
+    esta_finalizado = True
+    is_t = dados_salvos.get("is_teste", False)
+    txt_t = " [TESTE]" if is_t else ""
+    st.success(f"🔒 **SEMANA {num_semana} FINALIZADA E TRANSMITIDA{txt_t}.** Todos os campos estão bloqueados.")
+    if st.button("🔓 REABRIR PARA CORREÇÃO"):
+        dados_salvos["status"] = "RASCUNHO"
+        HISTORICO_GERAL[chave_registro] = dados_salvos
+        sucesso_reabrir = salvar_base_historico_github(
+            HISTORICO_GERAL,
+            mensagem_commit=f"Reaberto para edição S{num_semana} - {promotor_sel}"
+        )
+        if sucesso_reabrir:
+            st.success("Semana destravada com sucesso!")
+            st.rerun()
+elif dados_salvos:
+    st.warning(f"📝 Rascunho da Semana {num_semana} salvo em aberto. Edição liberada.")
+
+# ==============================================================================
+# REGISTROS DIÁRIOS (QUILOMETRAGEM COM CALENDÁRIO EXATO VINCULADO)
+# ==============================================================================
+st.markdown("### 📋 REGISTROS DIÁRIOS DE QUILOMETRAGEM")
+
+mapa_dados_salvos = {}
+if dados_salvos and "detalhes" in dados_salvos:
+    mapa_dados_salvos = {d["dia"]: d for d in dados_salvos["detalhes"]}
+
+tem_sabado_salvo = "Sábado" in mapa_dados_salvos
+tem_domingo_salvo = "Domingo" in mapa_dados_salvos
+
+col_flag1, col_flag2 = st.columns(2)
+with col_flag1:
+    habilitar_sabado = st.checkbox("📅 Habilitar Sábado", value=tem_sabado_salvo, disabled=esta_finalizado)
+with col_flag2:
+    habilitar_domingo = st.checkbox("📅 Habilitar Domingo", value=tem_domingo_salvo, disabled=esta_finalizado)
+
+dias_semana = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta"]
+if habilitar_sabado:
+    dias_semana.append("Sábado")
+if habilitar_domingo:
+    dias_semana.append("Domingo")
+
+detalhes_dias = []
+km_total_calculado = 0.0
+km_fim_anterior = 0.0
+
+for i, dia_nome in enumerate(dias_semana):
+    data_dia_dt = segunda + timedelta(days=i)
+    data_dia = data_dia_dt.strftime("%d/%m")
+    
+    dados_dia_salvo = mapa_dados_salvos.get(dia_nome, {})
+
+    with st.expander(f"📌 {dia_nome.upper()} ({data_dia_dt.strftime('%d/%m/%Y')})", expanded=(i == 0 or bool(dados_dia_salvo))):
+        sit_default = dados_dia_salvo.get("sit", "Normal")
+        idx_sit = SITUACOES.index(sit_default) if sit_default in SITUACOES else 0
+        sit_sel = st.selectbox(
+            f"Situação ({dia_nome})", 
+            SITUACOES, 
+            index=idx_sit, 
+            disabled=esta_finalizado,
+            key=f"sit_{dia_nome}"
+        )
+
+        dia_eh_normal = (sit_sel == "Normal")
+
+        col_kmi, col_kmf = st.columns(2)
+        with col_kmi:
+            def_kmi = str_br_para_float(dados_dia_salvo.get("km_ini", km_fim_anterior))
+            km_ini_str = st.text_input(
+                f"KM Inicial ({dia_nome})", 
+                value=float_para_str_br(def_kmi).replace(",00", ""), 
+                disabled=esta_finalizado or (not dia_eh_normal),
+                key=f"kmi_{dia_nome}"
+            )
+            km_ini = str_br_para_float(km_ini_str)
+
+        with col_kmf:
+            if dia_eh_normal:
+                val_salvo_kmf = dados_dia_salvo.get("km_fim", None)
+                if val_salvo_kmf is not None and str(val_salvo_kmf) not in ["0", "0.0", ""]:
+                    def_kmf = str_br_para_float(val_salvo_kmf)
+                else:
+                    def_kmf = def_kmi
+            else:
+                def_kmf = km_ini
+
+            km_fim_str = st.text_input(
+                f"KM Final ({dia_nome})", 
+                value=float_para_str_br(def_kmf).replace(",00", ""), 
+                disabled=esta_finalizado or (not dia_eh_normal),
+                key=f"kmf_{dia_nome}"
+            )
+            km_fim = str_br_para_float(km_fim_str)
+
+        km_dia = 0.0
+        if dia_eh_normal and km_fim > 0.0:
+            if km_fim < km_ini:
+                st.error("⚠️ KM Final não pode ser menor que o KM Inicial!")
+            else:
+                km_dia = km_fim - km_ini
+                km_fim_anterior = km_fim
+                st.markdown(f"<span style='color:#FDD818; font-weight:bold;'>🚘 KM Rodado: {float_para_str_br(km_dia)} km</span>", unsafe_allow_html=True)
+        elif not dia_eh_normal:
+            km_fim_anterior = km_ini
+
+        km_total_calculado += km_dia
+
+        detalhes_dias.append({
+            "dia": dia_nome,
+            "data": data_dia,
+            "km": km_dia,
+            "sit": sit_sel,
+            "km_ini": km_ini,
+            "km_fim": km_fim
+        })
+
+# ==============================================================================
+# GASTOS EXTRAS
+# ==============================================================================
+st.divider()
+st.markdown("### 💰 GASTOS EXTRAS")
+
+if "lista_gastos_extras" not in st.session_state:
+    gastos_salvos_default = dados_salvos.get("gastos_extras", []) if dados_salvos else []
+    if gastos_salvos_default:
+        st.session_state.lista_gastos_extras = gastos_salvos_default
+    else:
+        st.session_state.lista_gastos_extras = []
+
+if not esta_finalizado:
+    if st.button("➕ ADICIONAR DESPESA EXTRA"):
+        st.session_state.lista_gastos_extras.append({"data": segunda.strftime("%d/%m"), "desc": "", "valor": 0.0})
+        st.rerun()
+
+gastos_extras = []
+for idx, g_item in enumerate(st.session_state.lista_gastos_extras):
+    col_dt, col_desc, col_val, col_del = st.columns([1.2, 2.6, 1.8, 1.2])
+    
+    with col_dt:
+        g_data_str = st.text_input(
+            "Data",
+            value=g_item.get("data", segunda.strftime("%d/%m")),
+            placeholder="DD/MM",
+            disabled=esta_finalizado,
+            key=f"gdata_{idx}",
+            label_visibility="collapsed"
+        )
+    with col_desc:
+        g_desc = st.text_input(
+            "Descrição", 
+            value=g_item.get("desc", ""), 
+            placeholder="Ex: Almoço...", 
+            disabled=esta_finalizado,
+            key=f"gdesc_{idx}",
+            label_visibility="collapsed"
+        )
+    with col_val:
+        v_salvo_num = g_item.get("valor", 0.0)
+        v_salvo_txt = float_para_str_br(v_salvo_num) if v_salvo_num > 0 else ""
+        g_val_txt = st.text_input(
+            "Valor R$", 
+            value=v_salvo_txt, 
+            placeholder="0,00", 
+            disabled=esta_finalizado,
+            key=f"gval_{idx}",
+            label_visibility="collapsed"
+        )
+        v_float = str_br_para_float(g_val_txt)
+
+    with col_del:
+        if not esta_finalizado:
+            if st.button("🗑️ APAGAR", key=f"del_gasto_{idx}"):
+                st.session_state.lista_gastos_extras.pop(idx)
+                st.rerun()
+
+    if g_desc.strip() and v_float > 0 and g_data_str.strip():
+        gastos_extras.append({"data": g_data_str.strip(), "desc": g_desc.strip(), "valor": v_float})
+
+# ==============================================================================
+# RESUMO FINANCEIRO
+# ==============================================================================
+st.divider()
+st.markdown("### 📊 FECHAMENTO DA SEMANA")
+
+valor_total_km = km_total_calculado * VALOR_KM_TAXA
+valor_extras_total = sum(g["valor"] for g in gastos_extras)
+valor_total_reembolso = valor_total_km + valor_extras_total
+
+c_km, c_ext, c_tot = st.columns(3)
+c_km.metric("REEMBOLSO KM", f"R$ {float_para_str_br(valor_total_km)}")
+c_ext.metric("GASTOS EXTRAS", f"R$ {float_para_str_br(valor_extras_total)}")
+c_tot.metric("TOTAL A RECEBER", f"R$ {float_para_str_br(valor_total_reembolso)}")
+
+def construir_payload(status_envio):
+    return {
+        "id": int(datetime.now().timestamp()),
+        "semana_ref": str(num_semana),
+        "intervalo_datas": intervalo_str,
+        "promotor": promotor_sel,
+        "status": status_envio,
+        "is_teste": False,
+        "km_total": km_total_calculado,
+        "valor_km": valor_total_km,
+        "valor_extras": valor_extras_total,
+        "valor_total": valor_total_reembolso,
+        "gastos_extras": gastos_extras,
+        "detalhes": detalhes_dias,
+        "observacao_adriana": dados_salvos.get("observacao_adriana", "") if dados_salvos else ""
+    }
+
+st.write("")
+if not esta_finalizado:
+    col_btn1, col_btn2 = st.columns(2)
+
+    with col_btn1:
+        if st.button("SALVAR RASCUNHO 💾"):
+            payload = construir_payload("RASCUNHO")
+            HISTORICO_GERAL[chave_registro] = payload
+            sucesso = salvar_base_historico_github(
+                HISTORICO_GERAL, 
+                mensagem_commit=f"Rascunho S{num_semana} - {promotor_sel}"
+            )
+            if sucesso:
+                st.success(f"Rascunho da Semana {num_semana} salvo com sucesso!")
+                st.rerun()
+
+    with col_btn2:
+        st.markdown(f"<p style='font-size: 13px; color: #EDEDED; line-height: 1.4; margin-bottom: 8px;'>⚠️ <b>ATENÇÃO:</b> Você está enviando os dados referentes à <b>Semana {num_semana} ({intervalo_str})</b>. Confirmo que a semana está correta e assumo total responsabilidade pelas informações.</p>", unsafe_allow_html=True)
+        
+        confirmacao_texto = st.text_input(f"DIGITE 'SIM' PARA CONFIRMAR O ENVIO DA SEMANA {num_semana}:", placeholder="Digite SIM aqui", key=f"conf_envio_s{num_semana}")
+        termo_aceito = st.checkbox("Li e concordo com os termos e valores informados")
+        
+        if st.button("FINALIZAR SEMANA 🚀", type="primary"):
+            if confirmacao_texto.strip().upper() != "SIM":
+                st.error(f"❌ Você precisa digitar 'SIM' no campo acima confirmando que está enviando a Semana {num_semana}!")
+            elif not termo_aceito:
+                st.error("❌ Você precisa marcar o termo de confirmação e responsabilidade antes de finalizar a semana!")
+            else:
+                payload = construir_payload("FINALIZADO")
+                HISTORICO_GERAL[chave_registro] = payload
+                sucesso = salvar_base_historico_github(
+                    HISTORICO_GERAL, 
+                    mensagem_commit=f"FINALIZADO S{num_semana} - {promotor_sel}"
+                )
+                if sucesso:
+                    ok_email, msg_email = enviar_email_com_pdf(promotor_sel, num_semana, intervalo_str, payload)
+                    if ok_email:
+                        st.success(f"Semana {num_semana} finalizada, bloqueada e e-mail com PDF executivo enviado com sucesso!")
+                    else:
+                        st.warning(f"Semana finalizada no GitHub, mas houve um erro ao enviar o e-mail: {msg_email}")
+                    st.balloons()
+                    st.rerun()
+
+st.markdown("<br><hr><p style='text-align: center; color: #555555; font-size: 11px;'>Desenvolvido por Benedito Bandola</p>", unsafe_allow_html=True)
