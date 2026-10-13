@@ -1006,17 +1006,23 @@
         ]
     },
     "Fernanda Dias Ferreira_S42": {
-        "id": 1791891869,
+        "id": 1791891958,
         "semana_ref": "42",
         "intervalo_datas": "12/10 a 18/10",
         "promotor": "Fernanda Dias Ferreira",
-        "status": "RASCUNHO",
+        "status": "FINALIZADO",
         "is_teste": false,
         "km_total": 284.0,
         "valor_km": 332.28,
-        "valor_extras": 0,
-        "valor_total": 332.28,
-        "gastos_extras": [],
+        "valor_extras": 6.0,
+        "valor_total": 338.28,
+        "gastos_extras": [
+            {
+                "data": "08/10",
+                "desc": "Inpressao",
+                "valor": 6.0
+            }
+        ],
         "detalhes": [
             {
                 "dia": "Segunda",
