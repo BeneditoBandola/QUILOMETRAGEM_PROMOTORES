@@ -131,7 +131,7 @@ ARQUIVO_JSON_GERAL = "historico_km_geral.json"
 NOME_LOGOTIPO = "MINASSAL_LOGOS-04.png"
 
 # ==============================================================================
-# AUXILIARES DE FORMATAÇÃO E CÁLCULOS
+# AUXILIARES DE FORMATAÇÃO E CÁLCULOS (CALENDÁRIO EXATO ISO)
 # ==============================================================================
 def str_br_para_float(val):
     if not val:
@@ -155,9 +155,9 @@ def float_para_str_br(val):
 def calcular_intervalo_semana(num_semana, ano=None):
     if ano is None:
         ano = datetime.now().year
-    start = datetime(ano, 1, 1)
-    start -= timedelta(days=start.weekday())
-    segunda = start + timedelta(weeks=num_semana - 1)
+    primeiro_dia_ano = datetime(ano, 1, 4)
+    inicio_ano_iso = primeiro_dia_ano - timedelta(days=primeiro_dia_ano.weekday())
+    segunda = inicio_ano_iso + timedelta(weeks=num_semana - 1)
     domingo = segunda + timedelta(days=6)
     return segunda, domingo
 
@@ -182,7 +182,7 @@ def adicionar_rodape(canvas, doc):
     canvas.restoreState()
 
 # ==============================================================================
-# GERAÇÃO DO PDF EXECUTIVO (COM LINHAS DE TOTAIS)
+# GERAÇÃO DO PDF EXECUTIVO (COM LINHAS DE TOTAIS E OBSERVAÇÕES)
 # ==============================================================================
 def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminho_pdf_saida):
     doc = SimpleDocTemplate(
@@ -314,6 +314,14 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     else:
         elementos.append(Paragraph("Nenhuma despesa extra registrada.", ParagraphStyle('NDE', fontName='Helvetica-Oblique', fontSize=8.5, textColor=colors.HexColor('#666666'))))
 
+    # CAMPO DE OBSERVAÇÃO / JUSTIFICATIVA PARA A ADRIANA NO PDF SE HOUVER
+    obs_adriana = payload_dados.get("observacao_adriana", "")
+    if obs_adriana.strip():
+        elementos.append(Spacer(1, 15))
+        elementos.append(Paragraph("<b>OBSERVAÇÃO / JUSTIFICATIVA (BENEDITO PARA ADRIANA):</b>", ParagraphStyle('OBL', fontName='Helvetica-Bold', fontSize=9, textColor=colors.HexColor('#134074'))))
+        elementos.append(Spacer(1, 3))
+        elementos.append(Paragraph(obs_adriana, ParagraphStyle('OBT', fontName='Helvetica-Oblique', fontSize=8.5, textColor=colors.HexColor('#333333'))))
+
     elementos.append(Spacer(1, 20))
 
     total_geral = payload_dados.get("valor_total", 0.0)
@@ -343,6 +351,16 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
 
     assunto = f"[Minassal KM]{sufixo_assunto} Relatório de Reembolso - Semana {semana_num} - {promotor_nome}"
     
+    obs_adriana = payload_dados.get("observacao_adriana", "")
+    bloco_obs_email = ""
+    if obs_adriana.strip():
+        bloco_obs_email = f"""
+        <div style="background-color: #FFF9E6; border-left: 4px solid #FDD818; padding: 10px; margin: 15px 0;">
+            <p style="margin: 0; font-size: 13px; color: #333;"><b>💬 Observação do Benedito para Adriana:</b></p>
+            <p style="margin: 5px 0 0 0; font-size: 13px; color: #444; font-style: italic;">{obs_adriana}</p>
+        </div>
+        """
+
     corpo_html = f"""
     <html>
       <body style="font-family: Arial, sans-serif; color: #333;">
@@ -350,6 +368,7 @@ def enviar_email_com_pdf(promotor_nome, semana_num, intervalo, payload_dados):
         <p><b>Promotor(a):</b> {promotor_nome}</p>
         <p><b>Semana de Referência:</b> Semana {semana_num} ({intervalo})</p>
         <hr/>
+        {bloco_obs_email}
         <p>Segue em anexo o resumo financeiro executivo em PDF contendo o detalhamento de KM e despesas extras.</p>
         <p><b>Valor Total a Pagar: R$ {float_para_str_br(payload_dados['valor_total'])}</b></p>
         <p style="font-size: 11px; color: #777; margin-top: 20px;">E-mail automático enviado pelo sistema de Controle de KM da Minassal.</p>
@@ -547,10 +566,36 @@ if is_admin_benedito:
                 
                 if st.button("⚡ SALVAR NOVA SEMANA PARA ESTE REGISTRO"):
                     seg_n, dom_n = calcular_intervalo_semana(int(nova_semana_alvo))
-                    novo_intervalo_str = f"{seg_n.strftime('%d/%m')} a {dom_n.strftime('%d/%m')}"
+                    novo_intervalo_str = f"{seg_n.strftime('%d/%m/%Y')} a {dom_n.strftime('%d/%m/%Y')}"
                     
+                    dias_nomes_padrao = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+                    novos_detalhes_reclassificados = []
+                    for idx_d, d_nome in enumerate(dias_nomes_padrao):
+                        dt_dia_calc = seg_n + timedelta(days=idx_d)
+                        dt_str = dt_dia_calc.strftime("%d/%m")
+                        km_antigo = 0.0
+                        sit_antiga = "Normal"
+                        kmi_antigo = 0.0
+                        kmf_antigo = 0.0
+                        for d_old in dados_atual_editar.get("detalhes", []):
+                            if d_old.get("dia") == d_nome:
+                                km_antigo = d_old.get("km", 0.0)
+                                sit_antiga = d_old.get("sit", "Normal")
+                                kmi_antigo = d_old.get("km_ini", 0.0)
+                                kmf_antigo = d_old.get("km_fim", 0.0)
+                                break
+                        novos_detalhes_reclassificados.append({
+                            "dia": d_nome,
+                            "data": dt_str,
+                            "km": km_antigo,
+                            "sit": sit_antiga,
+                            "km_ini": kmi_antigo,
+                            "km_fim": kmf_antigo
+                        })
+
                     dados_atual_editar["semana_ref"] = str(nova_semana_alvo)
                     dados_atual_editar["intervalo_datas"] = novo_intervalo_str
+                    dados_atual_editar["detalhes"] = novos_detalhes_reclassificados
                     
                     nova_chave = f"{promotor_obj}_S{nova_semana_alvo}"
                     HISTORICO_GERAL[nova_chave] = dados_atual_editar
@@ -559,10 +604,10 @@ if is_admin_benedito:
                     
                     ok_reclassificar = salvar_base_historico_github(
                         HISTORICO_GERAL,
-                        mensagem_commit=f"Reclassificado {promotor_obj} para Semana {nova_semana_alvo}"
+                        mensagem_commit=f"Reclassificado {promotor_obj} para Semana {nova_semana_alvo} com calendário exato"
                     )
                     if ok_reclassificar:
-                        st.success(f"✅ Lançamento movido com sucesso para a Semana {nova_semana_alvo}!")
+                        st.success(f"✅ Lançamento movido com sucesso para a Semana {nova_semana_alvo} assumindo o calendário exato!")
                         st.rerun()
                     else:
                         st.error("Erro ao salvar alteração no GitHub.")
@@ -596,7 +641,7 @@ if is_admin_benedito:
     num_semana_sel = semana_escolhida_str.replace("Semana ", "")
 
     seg_sel, dom_sel = calcular_intervalo_semana(int(num_semana_sel))
-    intervalo_sel_str = f"{seg_sel.strftime('%d/%m')} a {dom_sel.strftime('%d/%m')}"
+    intervalo_sel_str = f"{seg_sel.strftime('%d/%m/%Y')} a {dom_sel.strftime('%d/%m/%Y')}"
     st.markdown(f"<div style='padding:8px 14px; background:#141414; border-left:4px solid #FDD818; margin-bottom:15px;'>📌 <b>PERÍODO DA SEMANA {num_semana_sel}:</b> {intervalo_sel_str}</div>", unsafe_allow_html=True)
 
     tabela_registros = []
@@ -673,11 +718,24 @@ if is_admin_benedito:
                 st.info("Nenhum gasto extra registrado por este promotor nesta semana.")
 
             st.write("")
+            # CAMPO DE OBSERVAÇÃO EXCLUSIVO PARA O BENEDITO AO REENVIAR O E-MAIL
+            obs_para_adriana = st.text_area(
+                f"💬 Observação / Justificativa para a Adriana (Exclusivo para este envio de {promotor_escolhido_detalhe}):",
+                value=detalhe_item.get("observacao_adriana", ""),
+                placeholder="Insira aqui qualquer recado ou justificativa para a Adriana...",
+                key=f"obs_adm_{promotor_escolhido_detalhe}_{num_semana_sel}"
+            )
+
             if st.button(f"📧 REENVIAR E-MAIL COM PDF PARA {promotor_escolhido_detalhe.upper()}", type="primary"):
+                # Atualiza a observação no payload antes de enviar
+                detalhe_item["observacao_adriana"] = obs_para_adriana.strip()
+                HISTORICO_GERAL[item_filtrado["Chave"]] = detalhe_item
+                salvar_base_historico_github(HISTORICO_GERAL, mensagem_commit=f"Atualizada observação Adriana para {promotor_escolhido_detalhe}")
+
                 with st.spinner("Gerando PDF e disparando e-mail..."):
                     ok_re, msg_re = enviar_email_com_pdf(promotor_escolhido_detalhe, int(num_semana_sel), intervalo_sel_str, detalhe_item)
                     if ok_re:
-                        st.success(f"✅ E-mail reenviado com sucesso para {promotor_escolhido_detalhe}!")
+                        st.success(f"✅ E-mail reenviado com sucesso para {promotor_escolhido_detalhe} com a observação inclusa!")
                     else:
                         st.error(f"❌ Erro ao enviar e-mail: {msg_re}")
 
@@ -696,7 +754,7 @@ if is_area_teste:
     if st.button("⚡ GERAR E DISPARAR TESTE(S) AGORA"):
         promotores_alvo = PROMOTORES if escolha_teste_promotor == "🔄 Todos os Promotores (Lote)" else [escolha_teste_promotor]
         seg_t, dom_t = calcular_intervalo_semana(num_semana_teste)
-        int_str_t = f"{seg_t.strftime('%d/%m')} a {dom_t.strftime('%d/%m')}"
+        int_str_t = f"{seg_t.strftime('%d/%m/%Y')} a {dom_t.strftime('%d/%m/%Y')}"
 
         sucessos = 0
         for p_nome in promotores_alvo:
@@ -706,7 +764,8 @@ if is_area_teste:
             km_base = 100.0
 
             for idx_d, d_nome in enumerate(dias_semana_teste):
-                dt_d = (seg_t + timedelta(days=idx_d)).strftime("%d/%m")
+                dt_dia_calc = seg_t + timedelta(days=idx_d)
+                dt_d = dt_dia_calc.strftime("%d/%m")
                 sit_f = "Normal"
                 km_d_f = round(random.uniform(45.0, 95.0), 1)
                 kmi_f = km_base
@@ -740,7 +799,8 @@ if is_area_teste:
                 "valor_extras": v_ext_fict,
                 "valor_total": v_tot_fict,
                 "gastos_extras": gastos_fict,
-                "detalhes": detalhes_ficticios
+                "detalhes": detalhes_ficticios,
+                "observacao_adriana": "Teste automatizado do sistema."
             }
 
             chave_reg_t = f"{p_nome}_S{num_semana_teste}"
@@ -763,7 +823,7 @@ if is_area_teste:
     st.stop()
 
 # ==============================================================================
-# FLUXO NORMAL DO PROMOTOR (COM TRAVA E MENU DE CONFIRMAÇÃO DE SEMANA)
+# FLUXO NORMAL DO PROMOTOR (COM CALENDÁRIO EXATO DA SEMANA ESCOLHIDA)
 # ==============================================================================
 dados_promotor_atual = DADOS_PROMOTORES.get(promotor_sel, {})
 
@@ -782,23 +842,24 @@ st.caption(f"🏠 {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
 
 st.divider()
 
-# ETAPA 1: MENU OBRIGATÓRIO DE SELEÇÃO DA SEMANA ANTES DE MOSTRAR O FORMULÁRIO
+# ETAPA 1: MENU OBRIGATÓRIO DE SELEÇÃO DA SEMANA COM CALENDÁRIO EXATO
 st.markdown("### 🎯 QUAL É A SEMANA QUE DESEJA INFORMAR?")
 st.caption("Selecione com atenção o número da semana correspondente aos seus lançamentos.")
 
 semana_padrao_default = obter_semana_padrao_inteligente()
 num_semana = st.number_input("Nº DA SEMANA DE REFERÊNCIA:", min_value=1, max_value=53, value=semana_padrao_default)
 
+# CÁLCULO RIGOROSO DO CALENDÁRIO DA SEMANA SELECIONADA
 segunda, domingo = calcular_intervalo_semana(num_semana)
 intervalo_str = f"{segunda.strftime('%d/%m/%Y')} a {domingo.strftime('%d/%m/%Y')}"
 
-# EXIBIÇÃO CLARA DO CALENDÁRIO DA SEMANA ESCOLHIDA ANTES DE PROSSEGUIR
+# EXIBIÇÃO CLARA E IMEDIATA DO CALENDÁRIO EXATO DAQUELA SEMANA
 st.markdown(f"""
 <div style='padding: 14px; background: #141414; border: 1px solid #333; border-left: 5px solid #FDD818; border-radius: 6px; margin-bottom: 20px;'>
-    <h4 style='color: #FDD818 !important; margin: 0 0 8px 0;'>📌 PERÍODO DA SEMANA {num_semana}:</h4>
-    <p style='font-size: 16px; margin: 0 0 10px 0;'><b>De {segunda.strftime('%d/%m')} até {domingo.strftime('%d/%m')} ({intervalo_str})</b></p>
+    <h4 style='color: #FDD818 !important; margin: 0 0 8px 0;'>📌 CALENDÁRIO EXATO DA SEMANA {num_semana}:</h4>
+    <p style='font-size: 16px; margin: 0 0 10px 0;'><b>De {segunda.strftime('%d/%m/%Y')} até {domingo.strftime('%d/%m/%Y')}</b></p>
     <hr style='border-color: #222; margin: 8px 0;'/>
-    <p style='font-size: 13px; color: #CCC; margin: 0;'><b>Dias abrangidos neste período:</b></p>
+    <p style='font-size: 13px; color: #CCC; margin: 0;'><b>Datas oficiais de cada dia desta semana:</b></p>
     <ul style='font-size: 13px; color: #AAA; margin: 4px 0 0 0; padding-left: 20px;'>
         <li>Segunda-feira: {(segunda).strftime('%d/%m/%Y')}</li>
         <li>Terça-feira: {(segunda + timedelta(days=1)).strftime('%d/%m/%Y')}</li>
@@ -871,7 +932,7 @@ elif dados_salvos:
     st.warning(f"📝 Rascunho da Semana {num_semana} salvo em aberto. Edição liberada.")
 
 # ==============================================================================
-# REGISTROS DIÁRIOS (QUILOMETRAGEM)
+# REGISTROS DIÁRIOS (QUILOMETRAGEM COM CALENDÁRIO EXATO VINCULADO)
 # ==============================================================================
 st.markdown("### 📋 REGISTROS DIÁRIOS DE QUILOMETRAGEM")
 
@@ -899,10 +960,12 @@ km_total_calculado = 0.0
 km_fim_anterior = 0.0
 
 for i, dia_nome in enumerate(dias_semana):
-    data_dia = (segunda + timedelta(days=i)).strftime("%d/%m")
+    data_dia_dt = segunda + timedelta(days=i)
+    data_dia = data_dia_dt.strftime("%d/%m")
+    
     dados_dia_salvo = mapa_dados_salvos.get(dia_nome, {})
 
-    with st.expander(f"📌 {dia_nome.upper()} ({data_dia})", expanded=(i == 0 or bool(dados_dia_salvo))):
+    with st.expander(f"📌 {dia_nome.upper()} ({data_dia_dt.strftime('%d/%m/%Y')})", expanded=(i == 0 or bool(dados_dia_salvo))):
         sit_default = dados_dia_salvo.get("sit", "Normal")
         idx_sit = SITUACOES.index(sit_default) if sit_default in SITUACOES else 0
         sit_sel = st.selectbox(
@@ -1056,7 +1119,8 @@ def construir_payload(status_envio):
         "valor_extras": valor_extras_total,
         "valor_total": valor_total_reembolso,
         "gastos_extras": gastos_extras,
-        "detalhes": detalhes_dias
+        "detalhes": detalhes_dias,
+        "observacao_adriana": dados_salvos.get("observacao_adriana", "") if dados_salvos else ""
     }
 
 st.write("")
@@ -1078,7 +1142,6 @@ if not esta_finalizado:
     with col_btn2:
         st.markdown(f"<p style='font-size: 13px; color: #EDEDED; line-height: 1.4; margin-bottom: 8px;'>⚠️ <b>ATENÇÃO:</b> Você está enviando os dados referentes à <b>Semana {num_semana} ({intervalo_str})</b>. Confirmo que a semana está correta e assumo total responsabilidade pelas informações.</p>", unsafe_allow_html=True)
         
-        # TRAVA DE SEGURANÇA: PERGUNTA EXPLÍCITA ANTES DE FINALIZAR
         confirmacao_texto = st.text_input(f"DIGITE 'SIM' PARA CONFIRMAR O ENVIO DA SEMANA {num_semana}:", placeholder="Digite SIM aqui", key=f"conf_envio_s{num_semana}")
         termo_aceito = st.checkbox("Li e concordo com os termos e valores informados")
         
