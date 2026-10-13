@@ -822,5 +822,66 @@
                 "km_fim": 41.4
             }
         ]
+    },
+    "Carolina Rodrigues Bruno_S41": {
+        "id": 1791854566,
+        "semana_ref": "41",
+        "intervalo_datas": "05/10 a 11/10",
+        "promotor": "Carolina Rodrigues Bruno",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 378.0,
+        "valor_km": 442.26,
+        "valor_extras": 7.0,
+        "valor_total": 449.26,
+        "gastos_extras": [
+            {
+                "data": "06/10",
+                "desc": "Papelaria , impressão",
+                "valor": 7.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "05/10",
+                "km": 72.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 72.0
+            },
+            {
+                "dia": "Terça",
+                "data": "06/10",
+                "km": 75.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 75.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "07/10",
+                "km": 73.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 73.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "08/10",
+                "km": 80.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 80.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "09/10",
+                "km": 78.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 78.0
+            }
+        ]
     }
 }
