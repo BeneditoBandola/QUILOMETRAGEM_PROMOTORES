@@ -314,7 +314,6 @@ def gerar_pdf_resumo_financeiro(promotor_nome, semana_num, payload_dados, caminh
     else:
         elementos.append(Paragraph("Nenhuma despesa extra registrada.", ParagraphStyle('NDE', fontName='Helvetica-Oblique', fontSize=8.5, textColor=colors.HexColor('#666666'))))
 
-    # CAMPO DE OBSERVAÇÃO / JUSTIFICATIVA PARA A ADRIANA NO PDF SE HOUVER
     obs_adriana = payload_dados.get("observacao_adriana", "")
     if obs_adriana.strip():
         elementos.append(Spacer(1, 15))
@@ -568,11 +567,13 @@ if is_admin_benedito:
                     seg_n, dom_n = calcular_intervalo_semana(int(nova_semana_alvo))
                     novo_intervalo_str = f"{seg_n.strftime('%d/%m/%Y')} a {dom_n.strftime('%d/%m/%Y')}"
                     
+                    # RECALCULA AS DATAS EXATAS DA NOVA SEMANA PARA CADA DIA DA SEMANA
                     dias_nomes_padrao = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
                     novos_detalhes_reclassificados = []
                     for idx_d, d_nome in enumerate(dias_nomes_padrao):
                         dt_dia_calc = seg_n + timedelta(days=idx_d)
                         dt_str = dt_dia_calc.strftime("%d/%m")
+                        
                         km_antigo = 0.0
                         sit_antiga = "Normal"
                         kmi_antigo = 0.0
@@ -584,6 +585,7 @@ if is_admin_benedito:
                                 kmi_antigo = d_old.get("km_ini", 0.0)
                                 kmf_antigo = d_old.get("km_fim", 0.0)
                                 break
+                                
                         novos_detalhes_reclassificados.append({
                             "dia": d_nome,
                             "data": dt_str,
@@ -607,7 +609,7 @@ if is_admin_benedito:
                         mensagem_commit=f"Reclassificado {promotor_obj} para Semana {nova_semana_alvo} com calendário exato"
                     )
                     if ok_reclassificar:
-                        st.success(f"✅ Lançamento movido com sucesso para a Semana {nova_semana_alvo} assumindo o calendário exato!")
+                        st.success(f"✅ Lançamento movido para a Semana {nova_semana_alvo} e o calendário foi atualizado com sucesso!")
                         st.rerun()
                     else:
                         st.error("Erro ao salvar alteração no GitHub.")
@@ -718,7 +720,6 @@ if is_admin_benedito:
                 st.info("Nenhum gasto extra registrado por este promotor nesta semana.")
 
             st.write("")
-            # CAMPO DE OBSERVAÇÃO EXCLUSIVO PARA O BENEDITO AO REENVIAR O E-MAIL
             obs_para_adriana = st.text_area(
                 f"💬 Observação / Justificativa para a Adriana (Exclusivo para este envio de {promotor_escolhido_detalhe}):",
                 value=detalhe_item.get("observacao_adriana", ""),
@@ -727,7 +728,6 @@ if is_admin_benedito:
             )
 
             if st.button(f"📧 REENVIAR E-MAIL COM PDF PARA {promotor_escolhido_detalhe.upper()}", type="primary"):
-                # Atualiza a observação no payload antes de enviar
                 detalhe_item["observacao_adriana"] = obs_para_adriana.strip()
                 HISTORICO_GERAL[item_filtrado["Chave"]] = detalhe_item
                 salvar_base_historico_github(HISTORICO_GERAL, mensagem_commit=f"Atualizada observação Adriana para {promotor_escolhido_detalhe}")
@@ -842,18 +842,15 @@ st.caption(f"🏠 {dados_promotor_atual.get('endereco', 'Não cadastrado')}")
 
 st.divider()
 
-# ETAPA 1: MENU OBRIGATÓRIO DE SELEÇÃO DA SEMANA COM CALENDÁRIO EXATO
 st.markdown("### 🎯 QUAL É A SEMANA QUE DESEJA INFORMAR?")
 st.caption("Selecione com atenção o número da semana correspondente aos seus lançamentos.")
 
 semana_padrao_default = obter_semana_padrao_inteligente()
 num_semana = st.number_input("Nº DA SEMANA DE REFERÊNCIA:", min_value=1, max_value=53, value=semana_padrao_default)
 
-# CÁLCULO RIGOROSO DO CALENDÁRIO DA SEMANA SELECIONADA
 segunda, domingo = calcular_intervalo_semana(num_semana)
 intervalo_str = f"{segunda.strftime('%d/%m/%Y')} a {domingo.strftime('%d/%m/%Y')}"
 
-# EXIBIÇÃO CLARA E IMEDIATA DO CALENDÁRIO EXATO DAQUELA SEMANA
 st.markdown(f"""
 <div style='padding: 14px; background: #141414; border: 1px solid #333; border-left: 5px solid #FDD818; border-radius: 6px; margin-bottom: 20px;'>
     <h4 style='color: #FDD818 !important; margin: 0 0 8px 0;'>📌 CALENDÁRIO EXATO DA SEMANA {num_semana}:</h4>
