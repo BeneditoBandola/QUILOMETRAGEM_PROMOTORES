@@ -1101,11 +1101,11 @@
         "observacao_adriana": "Adriana, o lançamento foi feito para a semana 42 incorretamente, segue o que deve ser considerado, semana 41. Obrigado!"
     },
     "Carolina Rodrigues Bruno_S42": {
-        "id": 1792368292,
+        "id": 1792368317,
         "semana_ref": "42",
         "intervalo_datas": "12/10/2026 a 18/10/2026",
         "promotor": "Carolina Rodrigues Bruno",
-        "status": "RASCUNHO",
+        "status": "FINALIZADO",
         "is_teste": false,
         "km_total": 384.0,
         "valor_km": 449.28,
