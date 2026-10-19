@@ -1099,5 +1099,72 @@
             }
         ],
         "observacao_adriana": "Adriana, o lançamento foi feito para a semana 42 incorretamente, segue o que deve ser considerado, semana 41. Obrigado!"
+    },
+    "Carolina Rodrigues Bruno_S42": {
+        "id": 1792368292,
+        "semana_ref": "42",
+        "intervalo_datas": "12/10/2026 a 18/10/2026",
+        "promotor": "Carolina Rodrigues Bruno",
+        "status": "RASCUNHO",
+        "is_teste": false,
+        "km_total": 384.0,
+        "valor_km": 449.28,
+        "valor_extras": 37.9,
+        "valor_total": 487.17999999999995,
+        "gastos_extras": [
+            {
+                "data": "15/10",
+                "desc": "Biscrok",
+                "valor": 23.9
+            },
+            {
+                "data": "16/10",
+                "desc": "Impressão",
+                "valor": 14.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "12/10",
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Terça",
+                "data": "13/10",
+                "km": 132.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 132.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "14/10",
+                "km": 59.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 59.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "15/10",
+                "km": 135.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 135.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "16/10",
+                "km": 58.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 58.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
