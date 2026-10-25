@@ -1432,5 +1432,67 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Fernanda Dias Ferreira_S43": {
+        "id": 1792966750,
+        "semana_ref": "43",
+        "intervalo_datas": "19/10/2026 a 25/10/2026",
+        "promotor": "Fernanda Dias Ferreira",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 243.0,
+        "valor_km": 284.31,
+        "valor_extras": 8.9,
+        "valor_total": 293.21,
+        "gastos_extras": [
+            {
+                "data": "21/10/26",
+                "desc": "caneta pilot",
+                "valor": 8.9
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "19/10",
+                "km": 37.0,
+                "sit": "Normal",
+                "km_ini": 85543.0,
+                "km_fim": 85580.0
+            },
+            {
+                "dia": "Terça",
+                "data": "20/10",
+                "km": 54.0,
+                "sit": "Normal",
+                "km_ini": 85580.0,
+                "km_fim": 85634.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "21/10",
+                "km": 48.0,
+                "sit": "Normal",
+                "km_ini": 85634.0,
+                "km_fim": 85682.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "22/10",
+                "km": 63.0,
+                "sit": "Normal",
+                "km_ini": 85682.0,
+                "km_fim": 85745.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "23/10",
+                "km": 41.0,
+                "sit": "Normal",
+                "km_ini": 85745.0,
+                "km_fim": 85786.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
