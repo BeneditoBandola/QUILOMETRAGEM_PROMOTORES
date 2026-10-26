@@ -1494,5 +1494,72 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Carolina Rodrigues Bruno_S43": {
+        "id": 1792978617,
+        "semana_ref": "43",
+        "intervalo_datas": "19/10/2026 a 25/10/2026",
+        "promotor": "Carolina Rodrigues Bruno",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 492.0,
+        "valor_km": 575.64,
+        "valor_extras": 63.6,
+        "valor_total": 639.24,
+        "gastos_extras": [
+            {
+                "data": "21/10",
+                "desc": "Pedágio ida e volta Matão",
+                "valor": 45.6
+            },
+            {
+                "data": "20/10",
+                "desc": "Impressão",
+                "valor": 18.0
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "19/10",
+                "km": 49.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 49.0
+            },
+            {
+                "dia": "Terça",
+                "data": "20/10",
+                "km": 142.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 142.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "21/10",
+                "km": 197.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 197.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "22/10",
+                "km": 53.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 53.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "23/10",
+                "km": 51.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 51.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
