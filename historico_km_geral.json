@@ -1561,5 +1561,92 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Pamela Camila de Almeida Alexandrino_S43": {
+        "id": 1792986783,
+        "semana_ref": "43",
+        "intervalo_datas": "19/10/2026 a 25/10/2026",
+        "promotor": "Pamela Camila de Almeida Alexandrino",
+        "status": "RASCUNHO",
+        "is_teste": false,
+        "km_total": 832.1999999999999,
+        "valor_km": 973.6739999999999,
+        "valor_extras": 255.29999999999998,
+        "valor_total": 1228.974,
+        "gastos_extras": [
+            {
+                "data": "20/10",
+                "desc": "Refrigerante/ pet mania 58,33 /agrocascatinha 18,67  ( autorizado Benedito)",
+                "valor": 77.0
+            },
+            {
+                "data": "21/10",
+                "desc": "Refrigerante/ união agropecuária/ agrocentro ( autorizado Benedito)",
+                "valor": 80.35
+            },
+            {
+                "data": "20/10 e 21/10",
+                "desc": "Impressões 29,40 / 12,25",
+                "valor": 41.65
+            },
+            {
+                "data": "19/10",
+                "desc": "Andradas pedágio ida e volta 10,10 cada",
+                "valor": 20.2
+            },
+            {
+                "data": "22/10",
+                "desc": "Pedágio São Carlos 8,60/ Ribeirão 18,30",
+                "valor": 26.9
+            },
+            {
+                "data": "23/10",
+                "desc": "São João da Boa Vista pedágio ida e volta 4,60 cada",
+                "valor": 9.2
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "19/10",
+                "km": 81.5,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 81.5
+            },
+            {
+                "dia": "Terça",
+                "data": "20/10",
+                "km": 39.9,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 39.9
+            },
+            {
+                "dia": "Quarta",
+                "data": "21/10",
+                "km": 37.6,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 37.6
+            },
+            {
+                "dia": "Quinta",
+                "data": "22/10",
+                "km": 545.4,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 545.4
+            },
+            {
+                "dia": "Sexta",
+                "data": "23/10",
+                "km": 127.8,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 127.8
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
