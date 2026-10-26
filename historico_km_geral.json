@@ -1648,5 +1648,67 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Saruete Valeska Stabile de Oliveira_S43": {
+        "id": 1793008352,
+        "semana_ref": "43",
+        "intervalo_datas": "19/10/2026 a 25/10/2026",
+        "promotor": "Saruete Valeska Stabile de Oliveira",
+        "status": "RASCUNHO",
+        "is_teste": false,
+        "km_total": 279.0,
+        "valor_km": 326.43,
+        "valor_extras": 98.23,
+        "valor_total": 424.66,
+        "gastos_extras": [
+            {
+                "data": "22/10",
+                "desc": "Viagem para são Carlos treinamento.",
+                "valor": 98.23
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "19/10",
+                "km": 65.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 65.0
+            },
+            {
+                "dia": "Terça",
+                "data": "20/10",
+                "km": 72.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 72.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "21/10",
+                "km": 65.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 65.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "22/10",
+                "km": 0.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "23/10",
+                "km": 77.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 77.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
