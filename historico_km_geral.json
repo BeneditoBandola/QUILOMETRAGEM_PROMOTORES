@@ -1777,5 +1777,67 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Saruete Valeska Stabile de Oliveira_S44": {
+        "id": 1793396129,
+        "semana_ref": "44",
+        "intervalo_datas": "26/10/2026 a 01/11/2026",
+        "promotor": "Saruete Valeska Stabile de Oliveira",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 558.0,
+        "valor_km": 652.86,
+        "valor_extras": 39.6,
+        "valor_total": 692.46,
+        "gastos_extras": [
+            {
+                "data": "29/10",
+                "desc": "Pedágio ida e volta",
+                "valor": 39.6
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "26/10",
+                "km": 68.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 68.0
+            },
+            {
+                "dia": "Terça",
+                "data": "27/10",
+                "km": 95.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 95.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "28/10",
+                "km": 87.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 87.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "29/10",
+                "km": 223.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 223.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "30/10",
+                "km": 85.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 85.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
