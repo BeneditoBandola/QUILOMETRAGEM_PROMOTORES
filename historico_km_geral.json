@@ -1839,5 +1839,72 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Carolina Rodrigues Bruno_S44": {
+        "id": 1793676232,
+        "semana_ref": "44",
+        "intervalo_datas": "26/10/2026 a 01/11/2026",
+        "promotor": "Carolina Rodrigues Bruno",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 194.0,
+        "valor_km": 226.98,
+        "valor_extras": 162.98,
+        "valor_total": 389.96,
+        "gastos_extras": [
+            {
+                "data": "27/10",
+                "desc": "Impressão",
+                "valor": 28.0
+            },
+            {
+                "data": "28/10",
+                "desc": "Paletes ração Royal loja comav",
+                "valor": 134.98
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "26/10",
+                "km": 37.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 37.0
+            },
+            {
+                "dia": "Terça",
+                "data": "27/10",
+                "km": 42.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 42.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "28/10",
+                "km": 39.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 39.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "29/10",
+                "km": 39.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 39.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "30/10",
+                "km": 37.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 37.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
