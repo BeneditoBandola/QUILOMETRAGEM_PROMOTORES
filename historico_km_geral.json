@@ -1908,57 +1908,63 @@
         "observacao_adriana": ""
     },
     "Fernanda Dias Ferreira_S45": {
-        "id": 1793701026,
+        "id": 1794180300,
         "semana_ref": "45",
         "intervalo_datas": "02/11/2026 a 08/11/2026",
         "promotor": "Fernanda Dias Ferreira",
-        "status": "RASCUNHO",
+        "status": "FINALIZADO",
         "is_teste": false,
-        "km_total": 246.0,
-        "valor_km": 287.82,
-        "valor_extras": 0,
-        "valor_total": 287.82,
-        "gastos_extras": [],
+        "km_total": 216.0,
+        "valor_km": 252.71999999999997,
+        "valor_extras": 39.0,
+        "valor_total": 291.71999999999997,
+        "gastos_extras": [
+            {
+                "data": "05/11",
+                "desc": "IMPRESSAO",
+                "valor": 39.0
+            }
+        ],
         "detalhes": [
             {
                 "dia": "Segunda",
                 "data": "02/11",
-                "km": 41.0,
-                "sit": "Normal",
-                "km_ini": 85643.0,
-                "km_fim": 85684.0
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
             },
             {
                 "dia": "Terça",
                 "data": "03/11",
-                "km": 49.0,
+                "km": 64.0,
                 "sit": "Normal",
-                "km_ini": 85684.0,
-                "km_fim": 85733.0
+                "km_ini": 85791.0,
+                "km_fim": 85855.0
             },
             {
                 "dia": "Quarta",
                 "data": "04/11",
-                "km": 31.0,
+                "km": 46.0,
                 "sit": "Normal",
-                "km_ini": 85732.0,
-                "km_fim": 85763.0
+                "km_ini": 85855.0,
+                "km_fim": 85901.0
             },
             {
                 "dia": "Quinta",
                 "data": "05/11",
-                "km": 67.0,
+                "km": 65.0,
                 "sit": "Normal",
-                "km_ini": 85763.0,
-                "km_fim": 85830.0
+                "km_ini": 85901.0,
+                "km_fim": 85966.0
             },
             {
                 "dia": "Sexta",
                 "data": "06/11",
-                "km": 58.0,
+                "km": 41.0,
                 "sit": "Normal",
-                "km_ini": 85830.0,
-                "km_fim": 85888.0
+                "km_ini": 85966.0,
+                "km_fim": 86007.0
             }
         ],
         "observacao_adriana": ""
