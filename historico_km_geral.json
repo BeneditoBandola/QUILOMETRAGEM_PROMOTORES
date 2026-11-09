@@ -2277,5 +2277,61 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Madalla Teixeira Reis_S45": {
+        "id": 1794223095,
+        "semana_ref": "45",
+        "intervalo_datas": "02/11/2026 a 08/11/2026",
+        "promotor": "Madalla Teixeira Reis",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 315.0,
+        "valor_km": 368.54999999999995,
+        "valor_extras": 0,
+        "valor_total": 368.54999999999995,
+        "gastos_extras": [],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "02/11",
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Terça",
+                "data": "03/11",
+                "km": 61.0,
+                "sit": "Normal",
+                "km_ini": 955.0,
+                "km_fim": 1016.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "04/11",
+                "km": 110.0,
+                "sit": "Normal",
+                "km_ini": 1016.0,
+                "km_fim": 1126.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "05/11",
+                "km": 87.0,
+                "sit": "Normal",
+                "km_ini": 1121.0,
+                "km_fim": 1208.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "06/11",
+                "km": 57.0,
+                "sit": "Normal",
+                "km_ini": 1208.0,
+                "km_fim": 1265.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
