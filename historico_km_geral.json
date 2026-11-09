@@ -2109,5 +2109,61 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Pamela Camila de Almeida Alexandrino_S45": {
+        "id": 1794187223,
+        "semana_ref": "45",
+        "intervalo_datas": "02/11/2026 a 08/11/2026",
+        "promotor": "Pamela Camila de Almeida Alexandrino",
+        "status": "RASCUNHO",
+        "is_teste": false,
+        "km_total": 372.9,
+        "valor_km": 436.29299999999995,
+        "valor_extras": 0,
+        "valor_total": 436.29299999999995,
+        "gastos_extras": [],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "02/11",
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Terça",
+                "data": "03/11",
+                "km": 45.3,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 45.3
+            },
+            {
+                "dia": "Quarta",
+                "data": "04/11",
+                "km": 284.9,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 284.9
+            },
+            {
+                "dia": "Quinta",
+                "data": "05/11",
+                "km": 42.7,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 42.7
+            },
+            {
+                "dia": "Sexta",
+                "data": "06/11",
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
