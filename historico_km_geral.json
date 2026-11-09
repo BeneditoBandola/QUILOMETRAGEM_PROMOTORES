@@ -2165,5 +2165,61 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Carolina Rodrigues Bruno_S45": {
+        "id": 1794194328,
+        "semana_ref": "45",
+        "intervalo_datas": "02/11/2026 a 08/11/2026",
+        "promotor": "Carolina Rodrigues Bruno",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 335.0,
+        "valor_km": 391.95,
+        "valor_extras": 0,
+        "valor_total": 391.95,
+        "gastos_extras": [],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "02/11",
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Terça",
+                "data": "03/11",
+                "km": 139.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 139.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "04/11",
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "05/11",
+                "km": 137.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 137.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "06/11",
+                "km": 59.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 59.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
