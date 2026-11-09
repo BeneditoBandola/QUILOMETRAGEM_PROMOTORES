@@ -2221,5 +2221,61 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Saruete Valeska Stabile de Oliveira_S45": {
+        "id": 1794219835,
+        "semana_ref": "45",
+        "intervalo_datas": "02/11/2026 a 08/11/2026",
+        "promotor": "Saruete Valeska Stabile de Oliveira",
+        "status": "RASCUNHO",
+        "is_teste": false,
+        "km_total": 336.0,
+        "valor_km": 393.12,
+        "valor_extras": 0,
+        "valor_total": 393.12,
+        "gastos_extras": [],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "02/11",
+                "km": 75.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 75.0
+            },
+            {
+                "dia": "Terça",
+                "data": "03/11",
+                "km": 68.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 68.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "04/11",
+                "km": 67.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 67.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "05/11",
+                "km": 71.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 71.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "06/11",
+                "km": 55.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 55.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
