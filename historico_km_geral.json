@@ -2223,11 +2223,11 @@
         "observacao_adriana": ""
     },
     "Saruete Valeska Stabile de Oliveira_S45": {
-        "id": 1794219835,
+        "id": 1794219890,
         "semana_ref": "45",
         "intervalo_datas": "02/11/2026 a 08/11/2026",
         "promotor": "Saruete Valeska Stabile de Oliveira",
-        "status": "RASCUNHO",
+        "status": "FINALIZADO",
         "is_teste": false,
         "km_total": 336.0,
         "valor_km": 393.12,
