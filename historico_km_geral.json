@@ -2333,5 +2333,61 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Fernanda Dias Ferreira_S46": {
+        "id": 1794786986,
+        "semana_ref": "46",
+        "intervalo_datas": "09/11/2026 a 15/11/2026",
+        "promotor": "Fernanda Dias Ferreira",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 324.0,
+        "valor_km": 379.08,
+        "valor_extras": 0,
+        "valor_total": 379.08,
+        "gastos_extras": [],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "09/11",
+                "km": 34.0,
+                "sit": "Normal",
+                "km_ini": 86091.0,
+                "km_fim": 86125.0
+            },
+            {
+                "dia": "Terça",
+                "data": "10/11",
+                "km": 41.0,
+                "sit": "Normal",
+                "km_ini": 86125.0,
+                "km_fim": 86166.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "11/11",
+                "km": 46.0,
+                "sit": "Normal",
+                "km_ini": 86166.0,
+                "km_fim": 86212.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "12/11",
+                "km": 156.0,
+                "sit": "Normal",
+                "km_ini": 86212.0,
+                "km_fim": 86368.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "13/11",
+                "km": 47.0,
+                "sit": "Normal",
+                "km_ini": 86368.0,
+                "km_fim": 86415.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
