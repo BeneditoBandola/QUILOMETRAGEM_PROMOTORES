@@ -2445,5 +2445,82 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Pamela Camila de Almeida Alexandrino_S46": {
+        "id": 1794804179,
+        "semana_ref": "46",
+        "intervalo_datas": "09/11/2026 a 15/11/2026",
+        "promotor": "Pamela Camila de Almeida Alexandrino",
+        "status": "RASCUNHO",
+        "is_teste": false,
+        "km_total": 627.9,
+        "valor_km": 734.6429999999999,
+        "valor_extras": 101.95,
+        "valor_total": 836.593,
+        "gastos_extras": [
+            {
+                "data": "09/11",
+                "desc": "Impressão",
+                "valor": 4.35
+            },
+            {
+                "data": "10/11",
+                "desc": "Pedágio andradas ida e volta / 10,10 cada",
+                "valor": 20.2
+            },
+            {
+                "data": "13/11",
+                "desc": "Pedágio três corações ida e volta 15,80 cada",
+                "valor": 31.6
+            },
+            {
+                "data": "11/11",
+                "desc": "Janta referente ao dia 11/11 e 12/11 22,90 cada",
+                "valor": 45.8
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "09/11",
+                "km": 29.7,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 29.7
+            },
+            {
+                "dia": "Terça",
+                "data": "10/11",
+                "km": 82.9,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 82.9
+            },
+            {
+                "dia": "Quarta",
+                "data": "11/11",
+                "km": 232.6,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 232.6
+            },
+            {
+                "dia": "Quinta",
+                "data": "12/11",
+                "km": 25.3,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 25.3
+            },
+            {
+                "dia": "Sexta",
+                "data": "13/11",
+                "km": 257.4,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 257.4
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
