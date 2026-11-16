@@ -2522,5 +2522,67 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Saruete Valeska Stabile de Oliveira_S46": {
+        "id": 1794822943,
+        "semana_ref": "46",
+        "intervalo_datas": "09/11/2026 a 15/11/2026",
+        "promotor": "Saruete Valeska Stabile de Oliveira",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 265.0,
+        "valor_km": 310.04999999999995,
+        "valor_extras": 27.9,
+        "valor_total": 337.94999999999993,
+        "gastos_extras": [
+            {
+                "data": "09/11",
+                "desc": "Bisckroc churrasco",
+                "valor": 27.9
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "09/11",
+                "km": 54.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 54.0
+            },
+            {
+                "dia": "Terça",
+                "data": "10/11",
+                "km": 62.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 62.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "11/11",
+                "km": 60.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 60.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "12/11",
+                "km": 57.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 57.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "13/11",
+                "km": 32.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 32.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
