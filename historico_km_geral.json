@@ -2640,5 +2640,77 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Pamela Camila de Almeida Alexandrino_S47": {
+        "id": 1795391379,
+        "semana_ref": "47",
+        "intervalo_datas": "16/11/2026 a 22/11/2026",
+        "promotor": "Pamela Camila de Almeida Alexandrino",
+        "status": "RASCUNHO",
+        "is_teste": false,
+        "km_total": 965.3,
+        "valor_km": 1129.4009999999998,
+        "valor_extras": 137.7,
+        "valor_total": 1267.1009999999999,
+        "gastos_extras": [
+            {
+                "data": "16/11",
+                "desc": "Pedagio de ida p/ Juiz de Fora 10,60/10,60/ 3,70",
+                "valor": 24.9
+            },
+            {
+                "data": "19/11",
+                "desc": "Pedágio volta de Juiz de Fora 10,60/ 10,60",
+                "valor": 21.2
+            },
+            {
+                "data": "19/11",
+                "desc": "Janta referente ao dia 16/17/18/19 4 dias a 22,90",
+                "valor": 91.6
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "16/11",
+                "km": 485.8,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 485.8
+            },
+            {
+                "dia": "Terça",
+                "data": "17/11",
+                "km": 0.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "18/11",
+                "km": 0.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "19/11",
+                "km": 479.5,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 479.5
+            },
+            {
+                "dia": "Sexta",
+                "data": "20/11",
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
