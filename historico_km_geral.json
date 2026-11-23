@@ -2712,5 +2712,67 @@
             }
         ],
         "observacao_adriana": ""
+    },
+    "Carolina Rodrigues Bruno_S47": {
+        "id": 1795397454,
+        "semana_ref": "47",
+        "intervalo_datas": "16/11/2026 a 22/11/2026",
+        "promotor": "Carolina Rodrigues Bruno",
+        "status": "FINALIZADO",
+        "is_teste": false,
+        "km_total": 371.0,
+        "valor_km": 434.07,
+        "valor_extras": 45.6,
+        "valor_total": 479.67,
+        "gastos_extras": [
+            {
+                "data": "16/11",
+                "desc": "Pedágio de São Carlos a Matão - Econoroeste",
+                "valor": 45.6
+            }
+        ],
+        "detalhes": [
+            {
+                "dia": "Segunda",
+                "data": "16/11",
+                "km": 197.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 197.0
+            },
+            {
+                "dia": "Terça",
+                "data": "17/11",
+                "km": 59.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 59.0
+            },
+            {
+                "dia": "Quarta",
+                "data": "18/11",
+                "km": 57.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 57.0
+            },
+            {
+                "dia": "Quinta",
+                "data": "19/11",
+                "km": 58.0,
+                "sit": "Normal",
+                "km_ini": 0.0,
+                "km_fim": 58.0
+            },
+            {
+                "dia": "Sexta",
+                "data": "20/11",
+                "km": 0.0,
+                "sit": "Feriado",
+                "km_ini": 0.0,
+                "km_fim": 0.0
+            }
+        ],
+        "observacao_adriana": ""
     }
 }
